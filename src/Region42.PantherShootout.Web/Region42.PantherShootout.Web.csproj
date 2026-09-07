@@ -12,4 +12,9 @@
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.24.1-preview.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Region42.PantherShootout.Application\Region42.PantherShootout.Application.csproj" />
+    <ProjectReference Include="..\Region42.PantherShootout.Infrastructure\Region42.PantherShootout.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>

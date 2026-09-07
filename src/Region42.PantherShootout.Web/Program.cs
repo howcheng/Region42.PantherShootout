@@ -1,7 +1,16 @@
+using Region42.PantherShootout.Application.Interfaces;
+using Region42.PantherShootout.Infrastructure;
+using Region42.PantherShootout.Web.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
+
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddPantherShootoutInfrastructure(
+    builder.Configuration.GetConnectionString("PantherShootout")
+        ?? throw new InvalidOperationException("Missing 'ConnectionStrings:PantherShootout' configuration value."));
 
 var app = builder.Build();
 

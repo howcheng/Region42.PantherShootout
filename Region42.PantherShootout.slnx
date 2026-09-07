@@ -3,6 +3,7 @@
     <Project Path="src/Region42.PantherShootout.Application/Region42.PantherShootout.Application.csproj" />
     <Project Path="src/Region42.PantherShootout.Domain/Region42.PantherShootout.Domain.csproj" />
     <Project Path="src/Region42.PantherShootout.Infrastructure/Region42.PantherShootout.Infrastructure.csproj" />
+    <Project Path="src/Region42.PantherShootout.Web/Region42.PantherShootout.Web.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/Region42.PantherShootout.Application.Tests/Region42.PantherShootout.Application.Tests.csproj" />
@@ -10,5 +11,4 @@
     <Project Path="test/Region42.PantherShootout.Infrastructure.Tests/Region42.PantherShootout.Infrastructure.Tests.csproj" />
     <Project Path="test/Region42.PantherShootout.Web.Tests/Region42.PantherShootout.Web.Tests.csproj" />
   </Folder>
-  <Project Path="src/Region42.PantherShootout.Web/Region42.PantherShootout.Web.csproj" />
 </Solution>

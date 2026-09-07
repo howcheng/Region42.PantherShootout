@@ -8,11 +8,16 @@
 
   <ItemGroup>
 	<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+	<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+	  <PrivateAssets>all</PrivateAssets>
+	  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+	</PackageReference>
 	<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
 	<ProjectReference Include="..\Region42.PantherShootout.Domain\Region42.PantherShootout.Domain.csproj" />
+	<ProjectReference Include="..\Region42.PantherShootout.Application\Region42.PantherShootout.Application.csproj" />
   </ItemGroup>
 
 </Project>
