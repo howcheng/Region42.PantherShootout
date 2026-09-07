@@ -1,8 +1,8 @@
-namespace Region42.PantherShootout.Application.Interfaces;
+namespace Region42.PantherShootout.Infrastructure;
 
 /// <summary>
-/// Abstraction over "who is making this change" so the Infrastructure layer's audit interceptor
-/// can stamp CreatedBy/ModifiedBy without depending on ASP.NET Core's HttpContext directly.
+/// Abstraction over "who is making this change" so <see cref="AuditSaveChangesInterceptor"/> can
+/// stamp CreatedBy/ModifiedBy without depending on ASP.NET Core's HttpContext directly.
 /// Implemented in the Web layer using the signed-in user's corresponding pso.users row.
 /// </summary>
 public interface ICurrentUserService

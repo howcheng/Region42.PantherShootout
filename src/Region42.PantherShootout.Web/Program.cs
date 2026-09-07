@@ -1,4 +1,3 @@
-using Region42.PantherShootout.Application.Interfaces;
 using Region42.PantherShootout.Infrastructure;
 using Region42.PantherShootout.Web.Services;
 

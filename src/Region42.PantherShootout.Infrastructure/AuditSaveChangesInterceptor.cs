@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Region42.PantherShootout.Application.Interfaces;
 using Region42.PantherShootout.Domain.Common;
 
 namespace Region42.PantherShootout.Infrastructure;

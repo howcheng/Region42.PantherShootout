@@ -17,7 +17,6 @@
 
   <ItemGroup>
 	<ProjectReference Include="..\Region42.PantherShootout.Domain\Region42.PantherShootout.Domain.csproj" />
-	<ProjectReference Include="..\Region42.PantherShootout.Application\Region42.PantherShootout.Application.csproj" />
   </ItemGroup>
 
 </Project>
