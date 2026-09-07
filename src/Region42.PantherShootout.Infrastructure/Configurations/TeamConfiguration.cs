@@ -13,5 +13,7 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
 		builder.Property(t => t.Name).HasMaxLength(150).IsRequired();
 
 		builder.HasIndex(t => new { t.PoolId, t.Name }).IsUnique();
+
+		builder.HasIndex(t => new { t.PoolId, t.TeamNumber }).IsUnique();
 	}
 }

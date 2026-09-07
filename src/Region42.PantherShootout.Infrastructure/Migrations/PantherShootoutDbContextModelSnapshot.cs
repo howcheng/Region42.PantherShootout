@@ -311,9 +311,15 @@ namespace Region42.PantherShootout.Infrastructure.Migrations
                     b.Property<int>("RowVersion")
                         .HasColumnType("integer");
 
+                    b.Property<int>("TeamNumber")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PoolId", "Name")
+                        .IsUnique();
+
+                    b.HasIndex("PoolId", "TeamNumber")
                         .IsUnique();
 
                     b.ToTable("teams", "pso");
