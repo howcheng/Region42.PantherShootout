@@ -11,6 +11,7 @@ public static class ServiceCollectionExtensions
 		ArgumentNullException.ThrowIfNull(services);
 
 		services.AddScoped<IPoolPlayStandingsService, PoolPlayStandingsService>();
+		services.AddScoped<IChampionshipBracketService, ChampionshipBracketService>();
 
 		return services;
 	}
