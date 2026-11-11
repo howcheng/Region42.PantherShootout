@@ -148,6 +148,16 @@ public class DivisionStandingsSnapshotDocument
 	/// </summary>
 	public PoolStandingsSnapshotDocument? CombinedDivisionStandings { get; set; }
 
+	/// <summary>
+	/// Populated for 12-team divisions: the 3 pool winners re-ranked amongst themselves.
+	/// </summary>
+	public PoolStandingsSnapshotDocument? PoolWinnersStandings { get; set; }
+
+	/// <summary>
+	/// Populated for 12-team divisions: the 3 pool runners-up re-ranked amongst themselves.
+	/// </summary>
+	public PoolStandingsSnapshotDocument? RunnersUpStandings { get; set; }
+
 	public PsoStandingsSnapshotDocument PsoStandings { get; set; } = new();
 }
 
