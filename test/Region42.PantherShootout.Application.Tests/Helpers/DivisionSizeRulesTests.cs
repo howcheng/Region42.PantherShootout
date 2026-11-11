@@ -50,4 +50,22 @@ public class DivisionSizeRulesTests
 		Assert.True(DivisionSizeRules.UsesPoolWinnerRunnerUpRanking(DivisionSize.Twelve));
 		Assert.False(DivisionSizeRules.UsesCombinedDivisionStandings(DivisionSize.Twelve));
 	}
+
+	[Theory]
+	[InlineData(DivisionSize.Four, 3)]
+	[InlineData(DivisionSize.Five, 4)]
+	[InlineData(DivisionSize.Six, 4)]
+	[InlineData(DivisionSize.Eight, 3)]
+	[InlineData(DivisionSize.Ten, 4)]
+	[InlineData(DivisionSize.Twelve, 3)]
+	public void GetShootoutRoundCount_MatchesBusinessRules(DivisionSize size, int expectedRounds) =>
+		Assert.Equal(expectedRounds, DivisionSizeRules.GetShootoutRoundCount(size));
+
+	[Theory]
+	[InlineData(DivisionSize.Five, true)]
+	[InlineData(DivisionSize.Ten, true)]
+	[InlineData(DivisionSize.Six, false)]
+	[InlineData(DivisionSize.Four, false)]
+	public void UsesPsoFourthRoundCap_OnlyForFiveTeamPools(DivisionSize size, bool expected) =>
+		Assert.Equal(expected, DivisionSizeRules.UsesPsoFourthRoundCap(size));
 }

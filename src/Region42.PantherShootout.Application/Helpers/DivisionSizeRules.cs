@@ -56,4 +56,27 @@ public static class DivisionSizeRules
 	/// across the whole division rather than a single pool.
 	/// </summary>
 	public static bool UsesDivisionWideForfeitScope(DivisionSize size) => size == DivisionSize.Ten;
+
+	/// <summary>
+	/// Maximum PSO round numbers scheduled for the division (3 for even-sized pools;
+	/// 4 when pools have an odd team count / bye rotation, including 6-team Round 4).
+	/// </summary>
+	public static int GetShootoutRoundCount(DivisionSize size) => size switch
+	{
+		DivisionSize.Four or DivisionSize.Eight or DivisionSize.Twelve => 3,
+		DivisionSize.Five or DivisionSize.Six or DivisionSize.Ten => 4,
+		_ => throw new ArgumentOutOfRangeException(nameof(size), size, "Unsupported division size."),
+	};
+
+	/// <summary>
+	/// Every team needs this many completed PSO matchups for division PSO standings to be final.
+	/// </summary>
+	public const int RequiredPsoMatchupsPerTeam = 3;
+
+	/// <summary>
+	/// 5-team pools (5- and 10-team divisions) may schedule a 4th PSO round that only counts
+	/// when the team has fewer than <see cref="RequiredPsoMatchupsPerTeam"/> results from rounds 1–3.
+	/// </summary>
+	public static bool UsesPsoFourthRoundCap(DivisionSize size) =>
+		size is DivisionSize.Five or DivisionSize.Ten;
 }
