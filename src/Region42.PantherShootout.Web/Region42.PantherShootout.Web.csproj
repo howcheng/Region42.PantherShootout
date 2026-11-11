@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Region42.PantherShootout.Domain\Region42.PantherShootout.Domain.csproj" />
     <ProjectReference Include="..\Region42.PantherShootout.Application\Region42.PantherShootout.Application.csproj" />
     <ProjectReference Include="..\Region42.PantherShootout.Infrastructure\Region42.PantherShootout.Infrastructure.csproj" />
   </ItemGroup>

@@ -1,4 +1,4 @@
-using Region42.PantherShootout.Domain.Common;
+﻿using Region42.PantherShootout.Domain.Common;
 
 namespace Region42.PantherShootout.Domain.Entities;
 

@@ -1,23 +1,23 @@
-namespace Region42.PantherShootout.Domain.Common;
+﻿namespace Region42.PantherShootout.Domain.Common;
 
 /// <summary>
 /// Base class for all entities that need audit tracking (created/modified at and by)
-/// plus a simple manually-incremented integer concurrency/row-version column.
+/// plus a simple manually-incremented integer concurrency/row-version value.
 /// </summary>
 public abstract class AuditableEntity
 {
 	public int Id { get; set; }
 
-	public DateTimeOffset CreatedAt { get; set; }
+	public DateTime CreatedAt { get; set; }
 
-	public int CreatedByUserId { get; set; }
+	public string CreatedBy { get; set; } = string.Empty;
 
-	public DateTimeOffset ModifiedAt { get; set; }
+	public DateTime ModifiedAt { get; set; }
 
-	public int ModifiedByUserId { get; set; }
+	public string ModifiedBy { get; set; } = string.Empty;
 
 	/// <summary>
 	/// Simple optimistic concurrency token, manually incremented by 1 on every save.
 	/// </summary>
-	public int RowVersion { get; set; }
+	public int RowVersion { get; set; } = 1;
 }

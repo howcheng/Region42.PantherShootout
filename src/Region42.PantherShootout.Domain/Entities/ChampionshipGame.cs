@@ -1,4 +1,4 @@
-using Region42.PantherShootout.Domain.Common;
+﻿using Region42.PantherShootout.Domain.Common;
 using Region42.PantherShootout.Domain.Enums;
 
 namespace Region42.PantherShootout.Domain.Entities;
@@ -17,6 +17,10 @@ public class ChampionshipGame : AuditableEntity
 
 	public BracketSlot Slot { get; set; }
 
+	public DateTime? ScheduledDateTime { get; set; }
+
+	public string Location { get; set; } = string.Empty;
+
 	public required string HomeSourceDescription { get; set; }
 
 	public required string AwaySourceDescription { get; set; }
@@ -34,6 +38,8 @@ public class ChampionshipGame : AuditableEntity
 	public int? AwayGoals { get; set; }
 
 	public bool IsForfeit { get; set; }
+
+	public ShootoutRound? ShootoutRound { get; set; }
 
 	public GameWinner GetWinner()
 	{

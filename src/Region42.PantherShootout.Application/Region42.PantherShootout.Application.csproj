@@ -8,11 +8,6 @@
 
   <ItemGroup>
 	<ProjectReference Include="..\Region42.PantherShootout.Domain\Region42.PantherShootout.Domain.csproj" />
-	<ProjectReference Include="..\Region42.PantherShootout.Infrastructure\Region42.PantherShootout.Infrastructure.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Interfaces\" />
   </ItemGroup>
 
 </Project>

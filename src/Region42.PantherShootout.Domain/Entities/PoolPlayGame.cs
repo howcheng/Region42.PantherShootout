@@ -1,4 +1,4 @@
-using Region42.PantherShootout.Domain.Common;
+﻿using Region42.PantherShootout.Domain.Common;
 using Region42.PantherShootout.Domain.Enums;
 
 namespace Region42.PantherShootout.Domain.Entities;
@@ -8,12 +8,20 @@ namespace Region42.PantherShootout.Domain.Entities;
 /// </summary>
 public class PoolPlayGame : AuditableEntity
 {
+	public int DivisionId { get; set; }
+
+	public Division? Division { get; set; }
+
 	public int PoolId { get; set; }
 
 	public Pool? Pool { get; set; }
 
 	/// <summary>1-based round number within the pool.</summary>
 	public int Round { get; set; }
+
+	public DateTime? ScheduledDateTime { get; set; }
+
+	public string Location { get; set; } = string.Empty;
 
 	public int HomeTeamId { get; set; }
 
@@ -40,12 +48,6 @@ public class PoolPlayGame : AuditableEntity
 	public int AwayYellowCards { get; set; }
 
 	public int AwayRedCards { get; set; }
-
-	/// <summary>
-	/// Manual "kicks from the mark" (KFTM) live tiebreaker result for pool-play standings,
-	/// independent of the PSO competition's own KFTM result. Null unless staff recorded one.
-	/// </summary>
-	public int? KftmWinningTeamId { get; set; }
 
 	public ShootoutRound? ShootoutRound { get; set; }
 

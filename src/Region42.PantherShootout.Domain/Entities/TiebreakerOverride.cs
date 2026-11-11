@@ -1,16 +1,7 @@
-using Region42.PantherShootout.Domain.Common;
+﻿using Region42.PantherShootout.Domain.Common;
+using Region42.PantherShootout.Domain.Enums;
 
 namespace Region42.PantherShootout.Domain.Entities;
-
-/// <summary>
-/// The kind of competition a manual KFTM tiebreaker override applies to. Pool-play standings
-/// and the PSO competition each have their own independent KFTM result for the same pair of teams.
-/// </summary>
-public enum TiebreakerScope
-{
-	PoolPlayStandings,
-	PsoStandings,
-}
 
 /// <summary>
 /// A manually-entered "kicks from the mark" (KFTM) live tiebreaker result between two teams,

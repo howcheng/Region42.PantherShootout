@@ -1,27 +1,22 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Region42.PantherShootout.Infrastructure.Repositories;
 
 namespace Region42.PantherShootout.Infrastructure;
 
 public static class ServiceCollectionExtensions
 {
 	/// <summary>
-	/// Registers the <see cref="PantherShootoutDbContext"/> (mapped to the "pso" schema), the
-	/// audit interceptor, and <see cref="IRepository{T}"/> as an open generic so any entity type
-	/// can be injected as <c>IRepository&lt;SomeEntity&gt;</c> without per-entity registration.
+	/// Registers JSON tournament storage services (local filesystem or Google Cloud Storage),
+	/// the scoped <c>ITournamentDataContext</c>, and open-generic <c>IRepository&lt;T&gt;</c>.
+	/// Full implementation will be added in Step 2 of the build plan.
 	/// </summary>
-	public static IServiceCollection AddPantherShootoutInfrastructure(this IServiceCollection services, string connectionString)
+	public static IServiceCollection AddPantherShootoutInfrastructure(
+		this IServiceCollection services,
+		IConfiguration configuration)
 	{
-		services.AddScoped<AuditSaveChangesInterceptor>();
+		ArgumentNullException.ThrowIfNull(services);
+		ArgumentNullException.ThrowIfNull(configuration);
 
-		services.AddDbContext<PantherShootoutDbContext>((sp, options) =>
-			options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "pso"))
-				.AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>()));
-
-		services.AddScoped<DbContext>(sp => sp.GetRequiredService<PantherShootoutDbContext>());
-
-		services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 		return services;
 	}
 }

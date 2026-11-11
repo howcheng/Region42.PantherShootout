@@ -1,4 +1,4 @@
-namespace Region42.PantherShootout.Domain.Enums;
+﻿namespace Region42.PantherShootout.Domain.Enums;
 
 /// <summary>
 /// Identifies the role/slot a championship-bracket game plays within a division's bracket,

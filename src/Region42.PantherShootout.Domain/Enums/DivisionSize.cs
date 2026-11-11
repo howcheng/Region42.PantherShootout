@@ -1,4 +1,4 @@
-namespace Region42.PantherShootout.Domain.Enums;
+﻿namespace Region42.PantherShootout.Domain.Enums;
 
 /// <summary>
 /// The supported division team-count configurations. The numeric value is the total number

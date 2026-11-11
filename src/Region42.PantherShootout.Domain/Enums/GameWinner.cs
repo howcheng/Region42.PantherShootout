@@ -1,4 +1,4 @@
-namespace Region42.PantherShootout.Domain.Enums;
+﻿namespace Region42.PantherShootout.Domain.Enums;
 
 /// <summary>
 /// The computed result of a game based on a plain comparison of home vs. away goals.
