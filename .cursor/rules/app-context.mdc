@@ -1,0 +1,9 @@
+---
+description: Entry-point context and documentation pointers for Region42.PantherShootout
+alwaysApply: true
+---
+# Application Context
+
+`Region42.PantherShootout` is a .NET 10 web application for tracking schedules, scores, pool-play standings, championship brackets, and Penalty Shootout (PSO) standings for AYSO Region 42's annual Panther Shootout youth soccer tournament.
+
+To avoid duplicating project documentation across IDE rule files, read `README.md` at the solution root first. It contains the domain overview, 4-layer Clean/Onion architecture rules, related `Region42.ScoresStandings` context, and an index of detailed specifications under `docs/` (such as `docs/BusinessRules.md` and `docs/json-storage.md`) that you should pull into context as needed for your current task.
