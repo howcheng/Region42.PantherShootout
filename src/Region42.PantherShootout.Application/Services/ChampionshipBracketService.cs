@@ -69,16 +69,7 @@ public class ChampionshipBracketService : IChampionshipBracketService
 			ChampionshipBracketBuilder.ApplyPsoRound4Assignments(shootoutRounds, championshipGames);
 		}
 
-		if (result.ChampionTeamId is not null)
-		{
-			var existing = _dataContext.GetStandingsForDivision(divisionId);
-			if (existing is not null)
-			{
-				existing.ChampionTeamId = result.ChampionTeamId;
-				_dataContext.SetStandingsForDivision(divisionId, existing);
-			}
-		}
-
+		// Snapshot ChampionTeamId is written by StandingsRefreshService after PSO merge.
 		return result;
 	}
 }

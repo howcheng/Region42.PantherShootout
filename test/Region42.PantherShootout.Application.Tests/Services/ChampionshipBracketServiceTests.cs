@@ -2,7 +2,6 @@
 using Region42.PantherShootout.Application.DTOs;
 using Region42.PantherShootout.Application.Interfaces;
 using Region42.PantherShootout.Application.Services;
-using Region42.PantherShootout.Domain.Documents;
 using Region42.PantherShootout.Domain.Entities;
 using Region42.PantherShootout.Domain.Enums;
 using Region42.PantherShootout.Domain.Interfaces;
@@ -13,7 +12,7 @@ namespace Region42.PantherShootout.Application.Tests.Services;
 public class ChampionshipBracketServiceTests
 {
 	[Fact]
-	public async Task SeedAndProgressAsync_SixTeam_SyncsPsoRound4AndSetsChampionSnapshot()
+	public async Task SeedAndProgressAsync_SixTeam_SyncsPsoRound4AndResolvesChampion()
 	{
 		var division = new Division
 		{
@@ -54,13 +53,10 @@ public class ChampionshipBracketServiceTests
 			],
 		};
 
-		var snapshot = new DivisionStandingsSnapshotDocument();
 		var context = new Mock<ITournamentDataContext>(MockBehavior.Strict);
 		context.SetupGet(c => c.Divisions).Returns([division]);
 		context.SetupGet(c => c.ChampionshipGames).Returns(championshipGames);
 		context.SetupGet(c => c.ShootoutRounds).Returns(shootouts);
-		context.Setup(c => c.GetStandingsForDivision(4)).Returns(snapshot);
-		context.Setup(c => c.SetStandingsForDivision(4, snapshot));
 
 		var poolService = new Mock<IPoolPlayStandingsService>(MockBehavior.Strict);
 		poolService
@@ -69,17 +65,15 @@ public class ChampionshipBracketServiceTests
 
 		var service = new ChampionshipBracketService(context.Object, poolService.Object);
 
-		// Seed opening rounds first
 		var seeded = await service.SeedAndProgressAsync(4);
 		Assert.Equal(1, Find(championshipGames, BracketSlot.Semifinal1).HomeTeamId);
 		Assert.All(shootouts, r => Assert.NotNull(r.HomeTeamId));
 
-		// Complete semifinals and championship
 		Find(championshipGames, BracketSlot.Semifinal1).HomeGoals = 2;
 		Find(championshipGames, BracketSlot.Semifinal1).AwayGoals = 0;
 		Find(championshipGames, BracketSlot.Semifinal2).HomeGoals = 1;
 		Find(championshipGames, BracketSlot.Semifinal2).AwayGoals = 0;
-		var afterSf = await service.SeedAndProgressAsync(4);
+		await service.SeedAndProgressAsync(4);
 		Assert.Equal(1, Find(championshipGames, BracketSlot.Championship).HomeTeamId);
 		Assert.Equal(4, Find(championshipGames, BracketSlot.Championship).AwayTeamId);
 
@@ -88,9 +82,7 @@ public class ChampionshipBracketServiceTests
 		var complete = await service.SeedAndProgressAsync(4);
 
 		Assert.Equal(1, complete.ChampionTeamId);
-		Assert.Equal(1, snapshot.ChampionTeamId);
 		Assert.Equal(1, seeded.PsoRound4Assignments.Count(a => a.ChampionshipSlot == BracketSlot.Consolation));
-		context.Verify(c => c.SetStandingsForDivision(4, snapshot), Times.AtLeastOnce);
 	}
 
 	private static ChampionshipGame Find(IEnumerable<ChampionshipGame> games, BracketSlot slot) =>

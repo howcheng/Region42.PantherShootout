@@ -13,6 +13,8 @@ public static class ServiceCollectionExtensions
 		services.AddScoped<IPoolPlayStandingsService, PoolPlayStandingsService>();
 		services.AddScoped<IChampionshipBracketService, ChampionshipBracketService>();
 		services.AddScoped<IPsoStandingsService, PsoStandingsService>();
+		services.AddScoped<IStandingsRefreshService, StandingsRefreshService>();
+		services.AddScoped<IScoreEntryService, ScoreEntryService>();
 
 		return services;
 	}
