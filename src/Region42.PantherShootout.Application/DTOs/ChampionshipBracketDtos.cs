@@ -30,6 +30,10 @@ public class ChampionshipGameDto
 
 	public BracketSlot Slot { get; set; }
 
+	public DateTime? ScheduledDateTime { get; set; }
+
+	public string Location { get; set; } = string.Empty;
+
 	public string HomeSourceDescription { get; set; } = string.Empty;
 
 	public string AwaySourceDescription { get; set; } = string.Empty;

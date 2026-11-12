@@ -6,4 +6,6 @@
 public static class StorageWriteLockNames
 {
 	public const string CsvScheduleImport = "csv-schedule-import";
+
+	public const string ScheduleImport = "schedule-import";
 }

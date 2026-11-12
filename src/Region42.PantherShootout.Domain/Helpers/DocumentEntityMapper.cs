@@ -129,6 +129,8 @@ public static class DocumentEntityMapper
 			PoolId = poolId,
 			Pool = pool,
 			TeamNumber = doc.TeamNumber,
+			RegionNumber = doc.RegionNumber,
+			CoachName = doc.CoachName ?? string.Empty,
 			Name = doc.Name,
 		};
 	}
@@ -141,6 +143,32 @@ public static class DocumentEntityMapper
 		{
 			Id = entity.Id,
 			TeamNumber = entity.TeamNumber,
+			RegionNumber = entity.RegionNumber,
+			CoachName = string.IsNullOrWhiteSpace(entity.CoachName) ? null : entity.CoachName,
+			Name = entity.Name,
+		};
+	}
+
+	public static AysoRegion ToEntity(RegionItemDocument doc)
+	{
+		ArgumentNullException.ThrowIfNull(doc);
+
+		return new AysoRegion
+		{
+			Id = doc.Id,
+			RegionNumber = doc.RegionNumber,
+			Name = doc.Name,
+		};
+	}
+
+	public static RegionItemDocument ToDocument(AysoRegion entity)
+	{
+		ArgumentNullException.ThrowIfNull(entity);
+
+		return new RegionItemDocument
+		{
+			Id = entity.Id,
+			RegionNumber = entity.RegionNumber,
 			Name = entity.Name,
 		};
 	}

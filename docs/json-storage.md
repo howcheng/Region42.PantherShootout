@@ -14,8 +14,9 @@ Because `ScoresStandings` reads the root `index.json` without filtering by compe
 gs://region42-storage/
   panther-shootout/
     index.json
+    regions.json
     locks/
-      csv-schedule-import.json
+      schedule-import.json
   {year}/
     panther-shootout/
       tournament.json
@@ -39,12 +40,16 @@ Document POCOs live in `src/Region42.PantherShootout.Domain/Documents/` and are 
 - Top-level catalog of all Panther Shootout tournament years in the bucket.
 - Stores `schemaVersion` and `tournaments[]` (`tournamentYearId`, `year`, `slug`, `name`, `isActive`, `tournamentPath`).
 
+### `panther-shootout/regions.json` (`RegionsDocument`)
+- Year-independent catalog mapping permanent AYSO region numbers to display names (e.g. `42` -> `"Newbury Park"`, `121` -> `"Simi Valley"`).
+- Hydrated into `ITournamentDataContext.Regions` (with default regions seeded in memory until first save) and wired onto `Team.RegionName` across all tournament years.
+
 ### `{year}/panther-shootout/tournament.json` (`TournamentDocument`)
 - Authoritative metadata and roster hierarchy for a single tournament year.
 - Contains:
   - `schemaVersion`, `version`, `modifiedAt`, `modifiedBy`
   - `tournament`: `TournamentYear` metadata (`id`, `year`, `name`, `isActive`, `customMessage`)
-  - `divisions[]`: division config (`id`, `key`, `name`, `ageGroup`, `gender`, `size`, `customMessage`) -> `pools[]` (`id`, `name`) -> `teams[]` (`id`, `teamNumber`, `name`)
+  - `divisions[]`: division config (`id`, `key`, `name`, `ageGroup`, `gender`, `size`, `customMessage`) -> `pools[]` (`id`, `name`) -> `teams[]` (`id`, `teamNumber`, `regionNumber`, `coachName`, `name`)
 - **Single source of truth for team names**: Just like `season.json` in `ScoresStandings`, team names live only in `tournament.json`. Downstream game, bracket, shootout, override, and standings records reference teams strictly by integer `teamId` and resolve display names/designations (`A1`, etc.) in memory.
 
 ### `{year}/panther-shootout/{division-key}.json` (`DivisionDataDocument`)

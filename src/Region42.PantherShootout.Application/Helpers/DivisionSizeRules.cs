@@ -8,6 +8,39 @@ namespace Region42.PantherShootout.Application.Helpers;
 /// </summary>
 public static class DivisionSizeRules
 {
+	/// <summary>
+	/// Every team needs this many completed PSO matchups for division PSO standings to be final.
+	/// </summary>
+	public const int RequiredPsoMatchupsPerTeam = 3;
+
+	public static bool TryFromTeamCount(int teamCount, out DivisionSize size)
+	{
+		switch (teamCount)
+		{
+			case 4:
+				size = DivisionSize.Four;
+				return true;
+			case 5:
+				size = DivisionSize.Five;
+				return true;
+			case 6:
+				size = DivisionSize.Six;
+				return true;
+			case 8:
+				size = DivisionSize.Eight;
+				return true;
+			case 10:
+				size = DivisionSize.Ten;
+				return true;
+			case 12:
+				size = DivisionSize.Twelve;
+				return true;
+			default:
+				size = default;
+				return false;
+		}
+	}
+
 	public static int GetPoolCount(DivisionSize size) => size switch
 	{
 		DivisionSize.Four => 1,
@@ -27,6 +60,20 @@ public static class DivisionSizeRules
 		DivisionSize.Eight => 4,
 		DivisionSize.Ten => 5,
 		DivisionSize.Twelve => 4,
+		_ => throw new ArgumentOutOfRangeException(nameof(size), size, "Unsupported division size."),
+	};
+
+	public static int GetPoolPlayRoundCount(DivisionSize size) => size switch
+	{
+		DivisionSize.Four or DivisionSize.Six or DivisionSize.Eight or DivisionSize.Twelve => 3,
+		DivisionSize.Five or DivisionSize.Ten => 5,
+		_ => throw new ArgumentOutOfRangeException(nameof(size), size, "Unsupported division size."),
+	};
+
+	public static int GetGamesPerPoolRound(DivisionSize size) => size switch
+	{
+		DivisionSize.Six => 1,
+		DivisionSize.Four or DivisionSize.Five or DivisionSize.Eight or DivisionSize.Ten or DivisionSize.Twelve => 2,
 		_ => throw new ArgumentOutOfRangeException(nameof(size), size, "Unsupported division size."),
 	};
 
@@ -67,11 +114,6 @@ public static class DivisionSizeRules
 		DivisionSize.Five or DivisionSize.Six or DivisionSize.Ten => 4,
 		_ => throw new ArgumentOutOfRangeException(nameof(size), size, "Unsupported division size."),
 	};
-
-	/// <summary>
-	/// Every team needs this many completed PSO matchups for division PSO standings to be final.
-	/// </summary>
-	public const int RequiredPsoMatchupsPerTeam = 3;
 
 	/// <summary>
 	/// 5-team pools (5- and 10-team divisions) may schedule a 4th PSO round that only counts

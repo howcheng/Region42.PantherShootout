@@ -13,6 +13,8 @@ public interface ITournamentDataContext
 {
 	TournamentIndexDocument Index { get; }
 
+	IReadOnlyList<AysoRegion> Regions { get; }
+
 	IReadOnlyList<TournamentYear> TournamentYears { get; }
 
 	IReadOnlyList<Division> Divisions { get; }

@@ -46,7 +46,9 @@ public class DivisionKeyHelperTests
 	public void ObjectPathHelpers_UseIsolatedPantherShootoutPaths()
 	{
 		Assert.Equal("panther-shootout/index.json", DivisionKeyHelper.GetIndexObjectPath());
+		Assert.Equal("panther-shootout/regions.json", DivisionKeyHelper.GetRegionsObjectPath());
 		Assert.Equal("panther-shootout/locks/csv-schedule-import.json", DivisionKeyHelper.GetLockObjectPath("csv-schedule-import"));
+		Assert.Equal("panther-shootout/locks/schedule-import.json", DivisionKeyHelper.GetLockObjectPath(StorageWriteLockNames.ScheduleImport));
 		Assert.Equal("2026/panther-shootout/tournament.json", DivisionKeyHelper.GetTournamentObjectPath(2026));
 		Assert.Equal("2026/panther-shootout/12u-girls.json", DivisionKeyHelper.GetDivisionObjectPath(2026, "12u-girls"));
 	}

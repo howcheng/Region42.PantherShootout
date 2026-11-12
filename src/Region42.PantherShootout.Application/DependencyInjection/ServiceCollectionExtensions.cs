@@ -15,6 +15,8 @@ public static class ServiceCollectionExtensions
 		services.AddScoped<IPsoStandingsService, PsoStandingsService>();
 		services.AddScoped<IStandingsRefreshService, StandingsRefreshService>();
 		services.AddScoped<IScoreEntryService, ScoreEntryService>();
+		services.AddScoped<IAysoRegionService, AysoRegionService>();
+		services.AddScoped<IScheduleImportService, ScheduleImportService>();
 
 		return services;
 	}

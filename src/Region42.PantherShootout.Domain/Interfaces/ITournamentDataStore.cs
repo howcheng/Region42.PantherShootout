@@ -12,6 +12,10 @@ public interface ITournamentDataStore
 
 	Task SaveIndexAsync(TournamentIndexDocument document, long? expectedGeneration, CancellationToken cancellationToken = default);
 
+	Task<StorageDocument<RegionsDocument>> GetRegionsDocumentAsync(CancellationToken cancellationToken = default);
+
+	Task SaveRegionsDocumentAsync(RegionsDocument document, long? expectedGeneration, CancellationToken cancellationToken = default);
+
 	Task<StorageDocument<TournamentDocument>> GetTournamentDocumentAsync(int year, string competitionSlug, CancellationToken cancellationToken = default);
 
 	Task SaveTournamentDocumentAsync(int year, string competitionSlug, TournamentDocument document, long? expectedGeneration, CancellationToken cancellationToken = default);

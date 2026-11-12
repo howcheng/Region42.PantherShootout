@@ -14,6 +14,12 @@ public class PoolPlayStandingDto
 	/// <summary>Pool letter + team number, e.g. <c>A1</c>.</summary>
 	public string TeamDesignation { get; set; } = string.Empty;
 
+	public int RegionNumber { get; set; }
+
+	public string RegionName { get; set; } = string.Empty;
+
+	public string CoachName { get; set; } = string.Empty;
+
 	public int PoolId { get; set; }
 
 	public string PoolName { get; set; } = string.Empty;

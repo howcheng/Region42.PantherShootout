@@ -69,6 +69,20 @@ public class GcsTournamentDataStore : ITournamentDataStore
 		return SaveObjectAsync(path, document, expectedGeneration, cancellationToken);
 	}
 
+	public Task<StorageDocument<RegionsDocument>> GetRegionsDocumentAsync(CancellationToken cancellationToken = default)
+	{
+		var path = DivisionKeyHelper.GetRegionsObjectPath(_competitionSlug);
+		return GetObjectAsync<RegionsDocument>(path, cancellationToken);
+	}
+
+	public Task SaveRegionsDocumentAsync(RegionsDocument document, long? expectedGeneration, CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(document);
+
+		var path = DivisionKeyHelper.GetRegionsObjectPath(_competitionSlug);
+		return SaveObjectAsync(path, document, expectedGeneration, cancellationToken);
+	}
+
 	private async Task SaveObjectAsync<T>(string objectPath, T document, long? expectedGeneration, CancellationToken cancellationToken)
 	{
 		var payload = TournamentJsonSerializer.SerializeToUtf8Bytes(document);

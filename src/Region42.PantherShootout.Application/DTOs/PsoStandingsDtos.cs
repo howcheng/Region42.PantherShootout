@@ -13,6 +13,12 @@ public class PsoStandingDto
 
 	public string TeamDesignation { get; set; } = string.Empty;
 
+	public int RegionNumber { get; set; }
+
+	public string RegionName { get; set; } = string.Empty;
+
+	public string CoachName { get; set; } = string.Empty;
+
 	/// <summary>
 	/// Per-round PK goals for this team (index 0 = round 1). Null means the team did not have a
 	/// counted result in that round (bye, incomplete, or 5-team 4th-round cap exclusion).

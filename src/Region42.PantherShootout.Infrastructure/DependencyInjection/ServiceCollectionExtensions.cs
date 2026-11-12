@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Region42.PantherShootout.Domain.Interfaces;
+using Region42.PantherShootout.Infrastructure.Import;
 using Region42.PantherShootout.Infrastructure.Repositories;
 using Region42.PantherShootout.Infrastructure.Storage;
 
@@ -12,7 +13,8 @@ public static class ServiceCollectionExtensions
 {
 	/// <summary>
 	/// Registers JSON tournament storage services (local filesystem or Google Cloud Storage),
-	/// write locks, the scoped <see cref="ITournamentDataContext"/>, and open-generic <see cref="IRepository{T}"/>.
+	/// write locks, the scoped <see cref="ITournamentDataContext"/>, open-generic <see cref="IRepository{T}"/>,
+	/// and the OpenXML schedule workbook reader.
 	/// </summary>
 	public static IServiceCollection AddInfrastructure(
 		this IServiceCollection services,
@@ -36,6 +38,7 @@ public static class ServiceCollectionExtensions
 			services.AddSingleton<IStorageWriteLock, LocalFileStorageWriteLock>();
 		}
 
+		services.AddSingleton<IScheduleWorkbookReader, OpenXmlScheduleWorkbookReader>();
 		services.AddScoped<ITournamentDataContext, TournamentDataContext>();
 		services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 

@@ -111,6 +111,12 @@ public static class DivisionKeyHelper
 		return $"{competitionSlug}/index.json";
 	}
 
+	public static string GetRegionsObjectPath(string competitionSlug = DefaultCompetitionSlug)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(competitionSlug);
+		return $"{competitionSlug}/regions.json";
+	}
+
 	public static string GetLockObjectPath(string lockName, string competitionSlug = DefaultCompetitionSlug)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(lockName);

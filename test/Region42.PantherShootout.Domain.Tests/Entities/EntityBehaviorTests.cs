@@ -13,6 +13,28 @@ public class EntityBehaviorTests
 		var team = new Team { Id = 2, PoolId = 1, Pool = pool, TeamNumber = 3, Name = "B3 Newbury Park: Rivera" };
 
 		Assert.Equal("B3", team.GetDesignation());
+		Assert.Equal("B3", team.Code);
+	}
+
+	[Fact]
+	public void Team_DiscreteProperties_FormatsDisplayNameFromRegionAndCoach()
+	{
+		var pool = new Pool { Id = 1, Name = "C" };
+		var team = new Team
+		{
+			Id = 5,
+			PoolId = 1,
+			Pool = pool,
+			TeamNumber = 4,
+			RegionNumber = 638,
+			CoachName = "Carper",
+		};
+
+		Assert.Equal("C4", team.Code);
+		Assert.Equal("Region 638: Carper", team.Name);
+
+		team.RegionName = "Quartz Hill";
+		Assert.Equal("Quartz Hill: Carper", team.Name);
 	}
 
 	[Theory]

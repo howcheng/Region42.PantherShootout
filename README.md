@@ -12,9 +12,9 @@ This `README.md` serves as the central entry point and documentation index for b
   1. **Pool Play & Championship Bracket ("the games")** — round-robin pool play scored under the AYSO 10-point system (with card deductions, forfeit rules, and a 6-step tiebreaker chain), followed by division-size-specific championship brackets (for 4-, 6-, 8-, and 12-team divisions).
   2. **Penalty Shootout ("PSO")** — a separate division-wide penalty-kick competition run alongside pool play (and opening bracket rounds in 6-team divisions), with its own rankings and tiebreakers.
 - **Age & Gender Divisions**: Six divisions (`10U Boys`, `10U Girls`, `12U Boys`, `12U Girls`, `14U Boys`, `14U Girls`), also abbreviated as `10UB`, `10UG`, `12UB`, `12UG`, `14UB`, `14UG`. Each division contains 4, 5, 6, 8, 10, or 12 teams arranged into pools of 3, 4, or 5 teams.
-- **Team Naming Convention**: Pool letter + 1-based team number (`Team.GetDesignation()`, e.g. `A1`), followed by region name and head coach's last name (e.g. `A1 Newbury Park: Smith`, `B3 Simi Valley: Anderson`).
+- **Team Naming Convention**: Pool letter + 1-based team number (`Team.Code` / `Team.GetDesignation()`, e.g. `A1`, `C4`), paired with discrete `RegionNumber`, resolved `RegionName` (from year-independent `panther-shootout/regions.json`), and `CoachName` (e.g. `A1 Simi Valley: Wright`, `C2 Newbury Park: Oakman`).
 - **Process Flow**:
-  1. Before the tournament begins, staff create/activate a tournament year and import divisions, pools, teams, and the full round-robin game schedule via CSV upload.
+  1. Before the tournament begins, staff maintain AYSO region mappings (`RegionNumber -> Name`), create/activate a tournament year, and import divisions, pools, teams, pool-play schedules, and championship bracket game times/fields via Excel (`.xlsx`) schedule upload.
   2. During the tournament, authenticated staff (`@aysoregion42.org`) enter game scores, cards, forfeits, PSO PK scores, and—only when formula tiebreakers are exhausted—live Kicks From The Mark (KFTM) tiebreaker overrides.
   3. Spectators view live pool standings, schedules, championship brackets, and PSO standings publicly without signing in.
 
@@ -66,3 +66,4 @@ Load the specific guides below as needed when working on related features:
 - **[Championship Brackets](docs/championship-brackets.md)** — Bracket topologies by division size, standings-based seeding, 6-team semifinal progression, no-bracket champions (5/10), 12-team winner/runner-up slots, and PSO Round 4 pairing sync.
 - **[PSO Standings Calculation](docs/pso-standings.md)** — Division-wide penalty-shootout ranking, 3- vs 4-round schedules, 5-team 4th-round cap, PK goals-against / PSO KFTM tiebreakers, and PSO snapshot shape.
 - **[Score Entry & Standings Refresh](docs/score-entry-and-refresh.md)** — Admin score/KFTM update validation, refresh pipeline (pool → bracket → PSO → snapshot), and `saveChanges` transaction behavior.
+- **[Excel Schedule Import & AYSO Regions](docs/excel-schedule-import.md)** — Two-step `.xlsx` workbook import (`Pools` + `Schedule` tabs), discrete `Team` fields, year-independent `regions.json` catalog, year-agnostic bracket heuristics, and preview cell overrides.

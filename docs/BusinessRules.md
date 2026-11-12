@@ -73,6 +73,11 @@ assignment as input, plus (per the clarifications below) an uploaded game schedu
   below; it is *not* the same count as pool-play game rounds. Divisions with 3- or 5-team pools
   (6, 5, 10 teams) get an extra 4th shootout round because of the bye rotation (see PSO section).
 
+## Team names
+Team names follow the format `<CODE> <REGION>: <COACH>`. The code is a combination of pool name
+and team number. Pools are identified by letters, so team A1 is the first team in pool A. The 
+numbers are arbitrary and do not signify anything.
+
 ## Pool Play (Games) Rules
 
 ### Round-robin scheduling

@@ -65,6 +65,9 @@ public static class PsoStandingsCalculator
 			TeamId = team.Id,
 			TeamName = team.Name,
 			TeamDesignation = team.GetDesignation(),
+			RegionNumber = team.RegionNumber,
+			RegionName = team.RegionName,
+			CoachName = team.CoachName,
 			RoundScores = Enumerable.Repeat<int?>(null, maxRounds).ToList(),
 		};
 

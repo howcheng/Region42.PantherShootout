@@ -24,13 +24,18 @@ public class ChampionshipBracketService : IChampionshipBracketService
 			?? throw new ArgumentNullException(nameof(poolPlayStandingsService));
 	}
 
-	public IReadOnlyList<ChampionshipBracketSlotDefinition> GetSlotDefinitions(DivisionSize size) =>
-		ChampionshipBracketBuilder.GetSlotDefinitions(size);
+	public IReadOnlyList<ChampionshipBracketSlotDefinition> GetSlotDefinitions(
+		DivisionSize size,
+		IReadOnlyList<string>? poolNames = null) =>
+		ChampionshipBracketBuilder.GetSlotDefinitions(size, poolNames);
 
-	public IReadOnlyList<ChampionshipGame> CreateBracketShells(int divisionId, DivisionSize size)
+	public IReadOnlyList<ChampionshipGame> CreateBracketShells(
+		int divisionId,
+		DivisionSize size,
+		IReadOnlyList<string>? poolNames = null)
 	{
 		ArgumentOutOfRangeException.ThrowIfNegativeOrZero(divisionId);
-		return ChampionshipBracketBuilder.CreateBracketShells(divisionId, size);
+		return ChampionshipBracketBuilder.CreateBracketShells(divisionId, size, poolNames);
 	}
 
 	public Task<ChampionshipBracketResult> SeedAndProgressAsync(

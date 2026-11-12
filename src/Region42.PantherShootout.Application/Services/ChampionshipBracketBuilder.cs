@@ -15,9 +15,16 @@ public static class ChampionshipBracketBuilder
 
 	/// <summary>
 	/// Returns the bracket slot shells for a division size (empty for 5- and 10-team divisions).
+	/// When <paramref name="poolNames"/> is provided, opening-round source descriptions use the
+	/// division's actual pool letters (e.g. "Pool C 1st place") instead of defaulting to "A"/"B".
 	/// </summary>
-	public static IReadOnlyList<ChampionshipBracketSlotDefinition> GetSlotDefinitions(DivisionSize size) =>
-		size switch
+	public static IReadOnlyList<ChampionshipBracketSlotDefinition> GetSlotDefinitions(
+		DivisionSize size,
+		IReadOnlyList<string>? poolNames = null)
+	{
+		var (pool0, pool1) = ResolveTwoPoolNames(poolNames);
+
+		return size switch
 		{
 			DivisionSize.Four =>
 			[
@@ -26,16 +33,16 @@ public static class ChampionshipBracketBuilder
 			],
 			DivisionSize.Six =>
 			[
-				Opening(BracketSlot.Consolation, "Pool A 3rd place", "Pool B 3rd place"),
-				Opening(BracketSlot.Semifinal1, "Pool A 1st place", "Pool B 2nd place"),
-				Opening(BracketSlot.Semifinal2, "Pool B 1st place", "Pool A 2nd place"),
+				Opening(BracketSlot.Consolation, $"Pool {pool0} 3rd place", $"Pool {pool1} 3rd place"),
+				Opening(BracketSlot.Semifinal1, $"Pool {pool0} 1st place", $"Pool {pool1} 2nd place"),
+				Opening(BracketSlot.Semifinal2, $"Pool {pool1} 1st place", $"Pool {pool0} 2nd place"),
 				Progression(BracketSlot.ThirdPlace, "Loser Semifinal 1", "Loser Semifinal 2"),
 				Progression(BracketSlot.Championship, "Winner Semifinal 1", "Winner Semifinal 2"),
 			],
 			DivisionSize.Eight =>
 			[
-				Opening(BracketSlot.ThirdPlace, "Pool A 2nd place", "Pool B 2nd place"),
-				Opening(BracketSlot.Championship, "Pool A 1st place", "Pool B 1st place"),
+				Opening(BracketSlot.ThirdPlace, $"Pool {pool0} 2nd place", $"Pool {pool1} 2nd place"),
+				Opening(BracketSlot.Championship, $"Pool {pool0} 1st place", $"Pool {pool1} 1st place"),
 			],
 			DivisionSize.Twelve =>
 			[
@@ -45,15 +52,19 @@ public static class ChampionshipBracketBuilder
 			DivisionSize.Five or DivisionSize.Ten => Array.Empty<ChampionshipBracketSlotDefinition>(),
 			_ => throw new ArgumentOutOfRangeException(nameof(size), size, "Unsupported division size."),
 		};
+	}
 
 	/// <summary>
 	/// Creates unsaved <see cref="ChampionshipGame"/> shells for a division (no team IDs).
 	/// </summary>
-	public static List<ChampionshipGame> CreateBracketShells(int divisionId, DivisionSize size)
+	public static List<ChampionshipGame> CreateBracketShells(
+		int divisionId,
+		DivisionSize size,
+		IReadOnlyList<string>? poolNames = null)
 	{
 		ArgumentOutOfRangeException.ThrowIfNegativeOrZero(divisionId);
 
-		return GetSlotDefinitions(size)
+		return GetSlotDefinitions(size, poolNames)
 			.Select(definition => new ChampionshipGame
 			{
 				DivisionId = divisionId,
@@ -162,25 +173,31 @@ public static class ChampionshipBracketBuilder
 				break;
 
 			case DivisionSize.Six:
+			{
+				var (firstPool, secondPool) = RequireOrderedTwoPools(poolStandings);
 				SeedPair(championshipGames, BracketSlot.Consolation,
-					RequirePoolRank(poolStandings, poolName: "A", rank: 3),
-					RequirePoolRank(poolStandings, poolName: "B", rank: 3));
+					RequireRank(firstPool, rank: 3, $"pool {firstPool.PoolName}"),
+					RequireRank(secondPool, rank: 3, $"pool {secondPool.PoolName}"));
 				SeedPair(championshipGames, BracketSlot.Semifinal1,
-					RequirePoolRank(poolStandings, poolName: "A", rank: 1),
-					RequirePoolRank(poolStandings, poolName: "B", rank: 2));
+					RequireRank(firstPool, rank: 1, $"pool {firstPool.PoolName}"),
+					RequireRank(secondPool, rank: 2, $"pool {secondPool.PoolName}"));
 				SeedPair(championshipGames, BracketSlot.Semifinal2,
-					RequirePoolRank(poolStandings, poolName: "B", rank: 1),
-					RequirePoolRank(poolStandings, poolName: "A", rank: 2));
+					RequireRank(secondPool, rank: 1, $"pool {secondPool.PoolName}"),
+					RequireRank(firstPool, rank: 2, $"pool {firstPool.PoolName}"));
 				break;
+			}
 
 			case DivisionSize.Eight:
+			{
+				var (firstPool, secondPool) = RequireOrderedTwoPools(poolStandings);
 				SeedPair(championshipGames, BracketSlot.ThirdPlace,
-					RequirePoolRank(poolStandings, poolName: "A", rank: 2),
-					RequirePoolRank(poolStandings, poolName: "B", rank: 2));
+					RequireRank(firstPool, rank: 2, $"pool {firstPool.PoolName}"),
+					RequireRank(secondPool, rank: 2, $"pool {secondPool.PoolName}"));
 				SeedPair(championshipGames, BracketSlot.Championship,
-					RequirePoolRank(poolStandings, poolName: "A", rank: 1),
-					RequirePoolRank(poolStandings, poolName: "B", rank: 1));
+					RequireRank(firstPool, rank: 1, $"pool {firstPool.PoolName}"),
+					RequireRank(secondPool, rank: 1, $"pool {secondPool.PoolName}"));
 				break;
+			}
 
 			case DivisionSize.Twelve:
 				SeedPair(championshipGames, BracketSlot.ThirdPlace,
@@ -281,13 +298,38 @@ public static class ChampionshipBracketBuilder
 		return RequireRank(standings.Pools[poolIndex], rank, $"pool index {poolIndex}");
 	}
 
-	private static int RequirePoolRank(DivisionPoolPlayStandingsResult standings, string poolName, int rank)
+	private static (string First, string Second) ResolveTwoPoolNames(IReadOnlyList<string>? poolNames)
 	{
-		var pool = standings.Pools.FirstOrDefault(p =>
-			string.Equals(p.PoolName, poolName, StringComparison.OrdinalIgnoreCase))
-			?? throw new InvalidOperationException($"Pool '{poolName}' was not found in standings.");
+		if (poolNames is null)
+		{
+			return ("A", "B");
+		}
 
-		return RequireRank(pool, rank, $"pool {poolName}");
+		var cleaned = poolNames
+			.Where(n => !string.IsNullOrWhiteSpace(n))
+			.Select(n => n.Trim())
+			.OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+			.ToList();
+
+		return cleaned.Count >= 2
+			? (cleaned[0], cleaned[1])
+			: ("A", "B");
+	}
+
+	private static (PoolPlayStandingsResult FirstPool, PoolPlayStandingsResult SecondPool) RequireOrderedTwoPools(
+		DivisionPoolPlayStandingsResult standings)
+	{
+		var ordered = standings.Pools
+			.OrderBy(p => p.PoolName, StringComparer.OrdinalIgnoreCase)
+			.ToList();
+
+		if (ordered.Count < 2)
+		{
+			throw new InvalidOperationException(
+				$"Expected at least 2 pools in division standings, but found {ordered.Count}.");
+		}
+
+		return (ordered[0], ordered[1]);
 	}
 
 	private static int RequireGroupRank(PoolPlayStandingsResult? group, int rank, string groupName)
@@ -318,6 +360,8 @@ public static class ChampionshipBracketBuilder
 		{
 			GameId = game.Id == 0 ? null : game.Id,
 			Slot = game.Slot,
+			ScheduledDateTime = game.ScheduledDateTime,
+			Location = game.Location,
 			HomeSourceDescription = game.HomeSourceDescription,
 			AwaySourceDescription = game.AwaySourceDescription,
 			HomeTeamId = game.HomeTeamId,

@@ -422,6 +422,73 @@ public class ChampionshipBracketBuilderTests
 		return (standings, ids);
 	}
 
+	[Fact]
+	public void CreateAndSeed_NonABPoolLetters_UsesActualTournamentPoolLetters()
+	{
+		var division = CreateDivision(DivisionSize.Six);
+		var shells = ChampionshipBracketBuilder.CreateBracketShells(division.Id, DivisionSize.Six, ["J", "I"]);
+
+		Assert.Equal("Pool I 3rd place", Find(shells, BracketSlot.Consolation).HomeSourceDescription);
+		Assert.Equal("Pool J 3rd place", Find(shells, BracketSlot.Consolation).AwaySourceDescription);
+		Assert.Equal("Pool I 1st place", Find(shells, BracketSlot.Semifinal1).HomeSourceDescription);
+		Assert.Equal("Pool J 2nd place", Find(shells, BracketSlot.Semifinal1).AwaySourceDescription);
+		Assert.Equal("Pool J 1st place", Find(shells, BracketSlot.Semifinal2).HomeSourceDescription);
+		Assert.Equal("Pool I 2nd place", Find(shells, BracketSlot.Semifinal2).AwaySourceDescription);
+
+		var standings = new DivisionPoolPlayStandingsResult
+		{
+			DivisionId = division.Id,
+			DivisionName = "14U Girls",
+			AllPoolsFinal = true,
+			Pools =
+			[
+				Pool("J", [201, 202, 203]),
+				Pool("I", [101, 102, 103]),
+			],
+		};
+
+		var result = ChampionshipBracketBuilder.SeedAndProgress(division, standings, shells);
+
+		Assert.True(result.PoolPlayFinal);
+		Assert.Equal(103, Find(shells, BracketSlot.Consolation).HomeTeamId);
+		Assert.Equal(203, Find(shells, BracketSlot.Consolation).AwayTeamId);
+		Assert.Equal(101, Find(shells, BracketSlot.Semifinal1).HomeTeamId);
+		Assert.Equal(202, Find(shells, BracketSlot.Semifinal1).AwayTeamId);
+		Assert.Equal(201, Find(shells, BracketSlot.Semifinal2).HomeTeamId);
+		Assert.Equal(102, Find(shells, BracketSlot.Semifinal2).AwayTeamId);
+	}
+
+	[Fact]
+	public void CreateAndSeed_EightTeamPoolsCAndD_SeedsCorrectly()
+	{
+		var division = CreateDivision(DivisionSize.Eight);
+		var shells = ChampionshipBracketBuilder.CreateBracketShells(division.Id, DivisionSize.Eight, ["C", "D"]);
+
+		Assert.Equal("Pool C 1st place", Find(shells, BracketSlot.Championship).HomeSourceDescription);
+		Assert.Equal("Pool D 1st place", Find(shells, BracketSlot.Championship).AwaySourceDescription);
+		Assert.Equal("Pool C 2nd place", Find(shells, BracketSlot.ThirdPlace).HomeSourceDescription);
+		Assert.Equal("Pool D 2nd place", Find(shells, BracketSlot.ThirdPlace).AwaySourceDescription);
+
+		var standings = new DivisionPoolPlayStandingsResult
+		{
+			DivisionId = division.Id,
+			DivisionName = "10U Boys",
+			AllPoolsFinal = true,
+			Pools =
+			[
+				Pool("C", [301, 302, 303, 304]),
+				Pool("D", [401, 402, 403, 404]),
+			],
+		};
+
+		ChampionshipBracketBuilder.SeedAndProgress(division, standings, shells);
+
+		Assert.Equal(301, Find(shells, BracketSlot.Championship).HomeTeamId);
+		Assert.Equal(401, Find(shells, BracketSlot.Championship).AwayTeamId);
+		Assert.Equal(302, Find(shells, BracketSlot.ThirdPlace).HomeTeamId);
+		Assert.Equal(402, Find(shells, BracketSlot.ThirdPlace).AwayTeamId);
+	}
+
 	private static PoolPlayStandingsResult Pool(string name, IReadOnlyList<int> rankedTeamIds) => new()
 	{
 		PoolName = name,

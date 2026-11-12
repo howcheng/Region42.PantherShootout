@@ -143,4 +143,45 @@ public class DocumentEntityMapperTests
 		Assert.Equal(TiebreakerScope.PsoStandings, rehydratedOverride.Scope);
 		Assert.Equal(1002, rehydratedOverride.WinningTeamId);
 	}
+
+	[Fact]
+	public void DiscreteTeamAndRegionDocuments_RoundTripCleanly()
+	{
+		var region = new AysoRegion
+		{
+			Id = 7,
+			RegionNumber = 121,
+			Name = "Simi Valley",
+		};
+
+		var regionDoc = DocumentEntityMapper.ToDocument(region);
+		var rehydratedRegion = DocumentEntityMapper.ToEntity(regionDoc);
+
+		Assert.Equal(7, rehydratedRegion.Id);
+		Assert.Equal(121, rehydratedRegion.RegionNumber);
+		Assert.Equal("Simi Valley", rehydratedRegion.Name);
+
+		var pool = new Pool { Id = 10, Name = "E" };
+		var team = new Team
+		{
+			Id = 44,
+			PoolId = pool.Id,
+			Pool = pool,
+			TeamNumber = 2,
+			RegionNumber = 638,
+			RegionName = "Quartz Hill",
+			CoachName = "Carper",
+		};
+
+		var teamDoc = DocumentEntityMapper.ToDocument(team);
+		Assert.Equal(638, teamDoc.RegionNumber);
+		Assert.Equal("Carper", teamDoc.CoachName);
+		Assert.Equal("Quartz Hill: Carper", teamDoc.Name);
+
+		var rehydratedTeam = DocumentEntityMapper.ToEntity(teamDoc, pool.Id, pool);
+		Assert.Equal("E2", rehydratedTeam.Code);
+		Assert.Equal(638, rehydratedTeam.RegionNumber);
+		Assert.Equal("Carper", rehydratedTeam.CoachName);
+		Assert.Equal("Quartz Hill: Carper", rehydratedTeam.Name);
+	}
 }

@@ -68,6 +68,11 @@ public class Repository<T> : IRepository<T> where T : AuditableEntity
 			return (IEnumerable<T>)_context.TiebreakerOverrides;
 		}
 
+		if (typeof(T) == typeof(AysoRegion))
+		{
+			return (IEnumerable<T>)_context.Regions;
+		}
+
 		throw new NotSupportedException($"Repository for entity type '{typeof(T).Name}' is not supported.");
 	}
 

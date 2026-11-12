@@ -12,12 +12,17 @@ public interface IChampionshipBracketService
 	/// <summary>
 	/// Returns static slot definitions for a division size (empty for 5- and 10-team divisions).
 	/// </summary>
-	IReadOnlyList<ChampionshipBracketSlotDefinition> GetSlotDefinitions(DivisionSize size);
+	IReadOnlyList<ChampionshipBracketSlotDefinition> GetSlotDefinitions(
+		DivisionSize size,
+		IReadOnlyList<string>? poolNames = null);
 
 	/// <summary>
 	/// Creates unsaved championship game shells for the division (no team IDs assigned yet).
 	/// </summary>
-	IReadOnlyList<ChampionshipGame> CreateBracketShells(int divisionId, DivisionSize size);
+	IReadOnlyList<ChampionshipGame> CreateBracketShells(
+		int divisionId,
+		DivisionSize size,
+		IReadOnlyList<string>? poolNames = null);
 
 	/// <summary>
 	/// Loads division standings/games, seeds opening bracket slots when pool play is final,

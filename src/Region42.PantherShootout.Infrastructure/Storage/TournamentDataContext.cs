@@ -18,6 +18,7 @@ public class TournamentDataContext : ITournamentDataContext
 	private readonly ICurrentUserService _currentUserService;
 	private readonly string _competitionSlug;
 
+	private readonly List<AysoRegion> _regions = new();
 	private readonly List<TournamentYear> _tournamentYears = new();
 	private readonly List<Division> _divisions = new();
 	private readonly List<Pool> _pools = new();
@@ -40,8 +41,10 @@ public class TournamentDataContext : ITournamentDataContext
 
 	private TournamentIndexDocument _index = new();
 	private StorageDocument<TournamentIndexDocument>? _indexStorage;
+	private StorageDocument<RegionsDocument>? _regionsStorage;
 	private bool _isLoaded;
 	private bool _indexDirty;
+	private bool _regionsDirty;
 	private int _nextId = 1;
 	private JsonDataTransaction? _activeTransaction;
 	private JsonDataTransactionSnapshot? _transactionSnapshot;
@@ -63,6 +66,8 @@ public class TournamentDataContext : ITournamentDataContext
 	}
 
 	public TournamentIndexDocument Index => _index;
+
+	public IReadOnlyList<AysoRegion> Regions => _regions;
 
 	public IReadOnlyList<TournamentYear> TournamentYears => _tournamentYears;
 
@@ -109,9 +114,52 @@ public class TournamentDataContext : ITournamentDataContext
 			await LoadTournamentYearInternalAsync(entry.Year, slug, cancellationToken);
 		}
 
+		RecalculateNextId();
+		await LoadRegionsInternalAsync(cancellationToken);
+
 		WireNavigationProperties();
 		RecalculateNextId();
 		_isLoaded = true;
+	}
+
+	private async Task LoadRegionsInternalAsync(CancellationToken cancellationToken)
+	{
+		try
+		{
+			_regionsStorage = await _store.GetRegionsDocumentAsync(cancellationToken);
+			_regions.Clear();
+			foreach (var itemDoc in _regionsStorage.Content.Regions.OrderBy(r => r.RegionNumber))
+			{
+				var region = DocumentEntityMapper.ToEntity(itemDoc);
+				StampHydratedAudit(region, _regionsStorage.Content.ModifiedAt, _regionsStorage.Content.ModifiedBy);
+				ReplaceOrAdd(_regions, region);
+			}
+		}
+		catch (FileNotFoundException)
+		{
+			_regionsStorage = new StorageDocument<RegionsDocument>
+			{
+				Content = new RegionsDocument { Version = 0 },
+				Generation = null,
+				ObjectPath = DivisionKeyHelper.GetRegionsObjectPath(_competitionSlug),
+			};
+
+			_regions.Clear();
+			foreach (var (regionNumber, name) in DefaultAysoRegions.Entries)
+			{
+				_regions.Add(new AysoRegion
+				{
+					Id = _nextId++,
+					RegionNumber = regionNumber,
+					Name = name,
+					CreatedAt = DateTime.UtcNow,
+					CreatedBy = "System",
+					ModifiedAt = DateTime.UtcNow,
+					ModifiedBy = "System",
+					RowVersion = 1,
+				});
+			}
+		}
 	}
 
 	public Task LoadTournamentYearAsync(int year, string competitionSlug, CancellationToken cancellationToken = default)
@@ -482,6 +530,11 @@ public class TournamentDataContext : ITournamentDataContext
 				MarkDivisionDirty(tiebreakerOverride.DivisionId);
 				break;
 
+			case AysoRegion aysoRegion:
+				ReplaceOrAdd(_regions, aysoRegion);
+				_regionsDirty = true;
+				break;
+
 			default:
 				throw new NotSupportedException($"Entity type {typeof(T).Name} is not supported.");
 		}
@@ -541,6 +594,11 @@ public class TournamentDataContext : ITournamentDataContext
 			case TiebreakerOverride tiebreakerOverride:
 				ReplaceOrAdd(_tiebreakerOverrides, tiebreakerOverride);
 				MarkDivisionDirty(tiebreakerOverride.DivisionId);
+				break;
+
+			case AysoRegion aysoRegion:
+				ReplaceOrAdd(_regions, aysoRegion);
+				_regionsDirty = true;
 				break;
 
 			default:
@@ -639,6 +697,11 @@ public class TournamentDataContext : ITournamentDataContext
 				MarkDivisionDirty(tiebreakerOverride.DivisionId);
 				break;
 
+			case AysoRegion aysoRegion:
+				_regions.RemoveAll(r => r.Id == aysoRegion.Id);
+				_regionsDirty = true;
+				break;
+
 			default:
 				throw new NotSupportedException($"Entity type {typeof(T).Name} is not supported.");
 		}
@@ -672,6 +735,15 @@ public class TournamentDataContext : ITournamentDataContext
 			_indexStorage = await _store.GetIndexAsync(cancellationToken);
 			_index = _indexStorage.Content;
 			_indexDirty = false;
+			changes++;
+		}
+
+		if (_regionsDirty)
+		{
+			var regionsDoc = BuildRegionsDocument(_regionsStorage?.Content, currentUser, now);
+			await _store.SaveRegionsDocumentAsync(regionsDoc, _regionsStorage?.Generation, cancellationToken);
+			_regionsStorage = await _store.GetRegionsDocumentAsync(cancellationToken);
+			_regionsDirty = false;
 			changes++;
 		}
 
@@ -724,6 +796,25 @@ public class TournamentDataContext : ITournamentDataContext
 		}
 
 		return changes;
+	}
+
+	private RegionsDocument BuildRegionsDocument(
+		RegionsDocument? existing,
+		string currentUser,
+		DateTime now)
+	{
+		return new RegionsDocument
+		{
+			SchemaVersion = RegionsDocument.CurrentSchemaVersion,
+			Version = (existing?.Version ?? 0) + 1,
+			ModifiedAt = now,
+			ModifiedBy = currentUser,
+			Regions = _regions
+				.OrderBy(r => r.RegionNumber)
+				.ThenBy(r => r.Id)
+				.Select(DocumentEntityMapper.ToDocument)
+				.ToList(),
+		};
 	}
 
 	private TournamentDocument BuildTournamentDocument(
@@ -841,6 +932,7 @@ public class TournamentDataContext : ITournamentDataContext
 	{
 		return new JsonDataTransactionSnapshot
 		{
+			Regions = _regions.Select(CloneRegion).ToList(),
 			TournamentYears = _tournamentYears.Select(CloneTournamentYear).ToList(),
 			Divisions = _divisions.Select(CloneDivision).ToList(),
 			Pools = _pools.Select(ClonePool).ToList(),
@@ -871,12 +963,16 @@ public class TournamentDataContext : ITournamentDataContext
 			DirtyTournamentPaths = new HashSet<(int Year, string Slug)>(_dirtyTournamentPaths),
 			DirtyDivisionPaths = new HashSet<(int Year, string Slug, string DivisionKey)>(_dirtyDivisionPaths),
 			IndexDirty = _indexDirty,
+			RegionsDirty = _regionsDirty,
 			NextId = _nextId,
 		};
 	}
 
 	private void RestoreSnapshot(JsonDataTransactionSnapshot snapshot)
 	{
+		_regions.Clear();
+		_regions.AddRange(snapshot.Regions);
+
 		_tournamentYears.Clear();
 		_tournamentYears.AddRange(snapshot.TournamentYears);
 
@@ -940,6 +1036,7 @@ public class TournamentDataContext : ITournamentDataContext
 		}
 
 		_indexDirty = snapshot.IndexDirty;
+		_regionsDirty = snapshot.RegionsDirty;
 		_nextId = snapshot.NextId;
 
 		WireNavigationProperties();
@@ -1041,6 +1138,7 @@ public class TournamentDataContext : ITournamentDataContext
 	private void RecalculateNextId()
 	{
 		var maxId = 0;
+		maxId = Math.Max(maxId, MaxIdOrZero(_regions));
 		maxId = Math.Max(maxId, MaxIdOrZero(_tournamentYears));
 		maxId = Math.Max(maxId, MaxIdOrZero(_divisions));
 		maxId = Math.Max(maxId, MaxIdOrZero(_pools));
@@ -1074,6 +1172,9 @@ public class TournamentDataContext : ITournamentDataContext
 		var teamsById = _teams.ToDictionary(t => t.Id);
 		var poolGamesById = _poolPlayGames.ToDictionary(g => g.Id);
 		var champGamesById = _championshipGames.ToDictionary(g => g.Id);
+		var regionNamesByNumber = _regions
+			.GroupBy(r => r.RegionNumber)
+			.ToDictionary(g => g.Key, g => g.First().Name);
 
 		foreach (var year in _tournamentYears)
 		{
@@ -1118,6 +1219,11 @@ public class TournamentDataContext : ITournamentDataContext
 			else
 			{
 				team.Pool = null;
+			}
+
+			if (team.RegionNumber > 0)
+			{
+				team.RegionName = regionNamesByNumber.GetValueOrDefault(team.RegionNumber) ?? string.Empty;
 			}
 		}
 
@@ -1265,12 +1371,27 @@ public class TournamentDataContext : ITournamentDataContext
 		RowVersion = entity.RowVersion,
 	};
 
+	private static AysoRegion CloneRegion(AysoRegion entity) => new()
+	{
+		Id = entity.Id,
+		RegionNumber = entity.RegionNumber,
+		Name = entity.Name,
+		CreatedAt = entity.CreatedAt,
+		CreatedBy = entity.CreatedBy,
+		ModifiedAt = entity.ModifiedAt,
+		ModifiedBy = entity.ModifiedBy,
+		RowVersion = entity.RowVersion,
+	};
+
 	private static Team CloneTeam(Team entity) => new()
 	{
 		Id = entity.Id,
 		PoolId = entity.PoolId,
-		Name = entity.Name,
 		TeamNumber = entity.TeamNumber,
+		RegionNumber = entity.RegionNumber,
+		RegionName = entity.RegionName,
+		CoachName = entity.CoachName,
+		Name = entity.Name,
 		CreatedAt = entity.CreatedAt,
 		CreatedBy = entity.CreatedBy,
 		ModifiedAt = entity.ModifiedAt,
@@ -1395,6 +1516,8 @@ internal sealed class JsonDataTransaction : ITransaction
 
 internal sealed class JsonDataTransactionSnapshot
 {
+	public List<AysoRegion> Regions { get; init; } = new();
+
 	public List<TournamentYear> TournamentYears { get; init; } = new();
 
 	public List<Division> Divisions { get; init; } = new();
@@ -1426,6 +1549,8 @@ internal sealed class JsonDataTransactionSnapshot
 	public HashSet<(int Year, string Slug, string DivisionKey)> DirtyDivisionPaths { get; init; } = new();
 
 	public bool IndexDirty { get; init; }
+
+	public bool RegionsDirty { get; init; }
 
 	public int NextId { get; init; }
 }

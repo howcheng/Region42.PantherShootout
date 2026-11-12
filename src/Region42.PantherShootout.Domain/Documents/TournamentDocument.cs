@@ -68,5 +68,9 @@ public class TeamDocument
 
 	public int TeamNumber { get; set; }
 
+	public int RegionNumber { get; set; }
+
+	public string? CoachName { get; set; }
+
 	public string Name { get; set; } = string.Empty;
 }
