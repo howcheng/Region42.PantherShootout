@@ -1,5 +1,7 @@
 html {
   font-size: 14px;
+  position: relative;
+  min-height: 100%;
 }
 
 @media (min-width: 768px) {
@@ -10,11 +12,6 @@ html {
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-html {
-  position: relative;
-  min-height: 100%;
 }
 
 body {
@@ -28,4 +25,55 @@ body {
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Dark mode theming */
+:root {
+  --bs-body-bg: #fff;
+  --bs-body-color: #212529;
+}
+
+html[data-bs-theme="dark"] {
+  --bs-body-bg: #121212;
+  --bs-body-color: #e0e0e0;
+}
+
+html[data-bs-theme="dark"] .navbar.bg-white {
+  background-color: #1e1e1e !important;
+}
+
+html[data-bs-theme="dark"] .navbar .nav-link,
+html[data-bs-theme="dark"] .navbar-brand,
+html[data-bs-theme="dark"] .nav-link.text-dark,
+html[data-bs-theme="dark"] .navbar-brand span {
+  color: #e0e0e0 !important;
+}
+
+html[data-bs-theme="dark"] .border-bottom {
+  border-color: #333 !important;
+}
+
+html[data-bs-theme="dark"] .footer.border-top {
+  border-color: #333 !important;
+}
+
+html[data-bs-theme="dark"] .box-shadow {
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.5) !important;
+}
+
+#theme-toggle {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: inherit;
+}
+
+#theme-toggle:hover {
+  opacity: 0.75;
 }

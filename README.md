@@ -31,11 +31,11 @@ The solution uses **.NET 10 (ASP.NET Core MVC / C# 14)** organized into a **4-La
 - **`Region42.PantherShootout.Domain`** (`src/Region42.PantherShootout.Domain`)
   - Core entities, enums, JSON document schemas (`Documents/`), entity/document mappers and path helpers (`Helpers/`), and persistence/service abstractions (`Interfaces/`). Zero external package dependencies.
 - **`Region42.PantherShootout.Application`** (`src/Region42.PantherShootout.Application`)
-  - Business services: pool-play standings and 6-tier tiebreaker calculations, championship bracket seeding/progression, PSO standings calculations, score entry orchestration, and two-step CSV import validation/execution. References `Domain` only.
+  - Business services: pool-play standings and 6-tier tiebreaker calculations, championship bracket seeding/progression, PSO standings calculations, score entry orchestration, and two-step Excel (`.xlsx`) schedule import validation/execution. References `Domain` only.
 - **`Region42.PantherShootout.Infrastructure`** (`src/Region42.PantherShootout.Infrastructure`)
-  - JSON document persistence (local filesystem in development, Google Cloud Storage in production), coarse-grained storage write locks, scoped in-memory `TournamentDataContext` (dirty tracking + snapshot transactions), and generic `Repository<T>`. References `Domain` only.
+  - JSON document persistence (local filesystem in development, Google Cloud Storage in production), coarse-grained storage write locks, scoped in-memory `TournamentDataContext` (dirty tracking + snapshot transactions), generic `Repository<T>`, and OpenXML `.xlsx` schedule workbook parsing. References `Domain` only.
 - **`Region42.PantherShootout.Web`** (`src/Region42.PantherShootout.Web`)
-  - ASP.NET Core MVC controllers and views, Google OAuth restricted to `@aysoregion42.org`, middleware, and DI wiring.
+  - ASP.NET Core MVC controllers and views, Google OAuth restricted to `@aysoregion42.org`, OWASP security headers + `'strict-dynamic'` nonce CSP (`CspNonceScriptTagHelper`), session-backed `TempData`, and DI wiring.
 - **Test Projects** (`test/`)
   - xUnit + Moq test suites mirroring each layer (`Domain.Tests`, `Application.Tests`, `Infrastructure.Tests`, `Web.Tests`).
 
@@ -58,6 +58,7 @@ The solution uses **.NET 10 (ASP.NET Core MVC / C# 14)** organized into a **4-La
 Load the specific guides below as needed when working on related features:
 
 ### Architecture & Infrastructure
+- **[Site Setup, Authentication & Security Guide](docs/site-setup.md)** — Local development quick start, Google OAuth + `@aysoregion42.org` `AdminPolicy` setup, MVC middleware pipeline (forwarded headers, session `TempData`, theme cookie), `'strict-dynamic'` nonce CSP + `CspNonceScriptTagHelper`, and Cloud Run configuration.
 - **[JSON File Storage Strategy](docs/json-storage.md)** — Bucket layout and `ScoresStandings` coexistence rules, JSON document schemas, `ITournamentDataContext` dirty-tracking and snapshot transactions, optimistic concurrency (`Generation`), write locks, and configuration.
 
 ### Business Rules & Feature Specifications
