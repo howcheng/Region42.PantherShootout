@@ -46,6 +46,13 @@ public class PoolPlayScoreEntryCardViewModel
 
 	public int? AwayPkGoals { get; set; }
 
+	public bool HomePsoDoesNotCount { get; set; }
+
+	public bool AwayPsoDoesNotCount { get; set; }
+
+	public string? NonCountingPsoTeamCode =>
+		HomePsoDoesNotCount ? HomeCode : (AwayPsoDoesNotCount ? AwayCode : null);
+
 	public DateTime ModifiedAt { get; set; }
 
 	public string ModifiedBy { get; set; } = string.Empty;
@@ -80,6 +87,13 @@ public class ChampionshipScoreEntryCardViewModel
 	public int? HomePkGoals { get; set; }
 
 	public int? AwayPkGoals { get; set; }
+
+	public bool HomePsoDoesNotCount { get; set; }
+
+	public bool AwayPsoDoesNotCount { get; set; }
+
+	public string? NonCountingPsoTeamDisplay =>
+		HomePsoDoesNotCount ? HomeDisplay : (AwayPsoDoesNotCount ? AwayDisplay : null);
 }
 
 public class ActiveKftmTiePromptViewModel

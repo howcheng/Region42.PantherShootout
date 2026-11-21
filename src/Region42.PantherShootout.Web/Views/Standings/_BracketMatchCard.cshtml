@@ -59,9 +59,9 @@
 		}
 	</div>
 
-	@if (Model.IsForfeit || Model.HasRound4PsoScore)
+	@if (Model.IsForfeit || Model.HasPairedRound4Pso)
 	{
-		<div class="d-flex justify-content-between align-items-center small mt-1 pt-1 border-top">
+		<div class="d-flex flex-wrap justify-content-between align-items-center small mt-1 pt-1 border-top gap-1">
 			@if (Model.IsForfeit)
 			{
 				<span class="badge bg-warning-subtle text-warning-emphasis">Forfeit</span>
@@ -72,7 +72,24 @@
 			}
 			@if (Model.HasRound4PsoScore)
 			{
-				<span class="badge bg-info-subtle text-info-emphasis">PSO R4 PK: @Model.HomePkGoals - @Model.AwayPkGoals</span>
+				<div class="text-end">
+					<span class="badge bg-info-subtle text-info-emphasis">
+						PSO R4 PK:
+						<span class="@(Model.HomePsoDoesNotCount ? "capped-round-score" : "")">@Model.HomePkGoals</span>
+						-
+						<span class="@(Model.AwayPsoDoesNotCount ? "capped-round-score" : "")">@Model.AwayPkGoals</span>
+					</span>
+					@if (!string.IsNullOrWhiteSpace(Model.NonCountingPsoTeamDisplay))
+					{
+						<small class="d-block text-muted">@Model.NonCountingPsoTeamDisplay score does not count (3 turns done)</small>
+					}
+				</div>
+			}
+			else if (Model.HasPairedRound4Pso)
+			{
+				<span class="badge bg-info-subtle text-info-emphasis" title="4th shootout round; score does not count if a team already got 3 turns">
+					Includes PSO Round 4 (max 3 turns counted)
+				</span>
 			}
 		</div>
 	}

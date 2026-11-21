@@ -68,4 +68,14 @@ public class DivisionSizeRulesTests
 	[InlineData(DivisionSize.Four, false)]
 	public void UsesPsoFourthRoundCap_OnlyForFiveTeamPools(DivisionSize size, bool expected) =>
 		Assert.Equal(expected, DivisionSizeRules.UsesPsoFourthRoundCap(size));
+
+	[Theory]
+	[InlineData(DivisionSize.Five, true)]
+	[InlineData(DivisionSize.Six, true)]
+	[InlineData(DivisionSize.Ten, true)]
+	[InlineData(DivisionSize.Four, false)]
+	[InlineData(DivisionSize.Eight, false)]
+	[InlineData(DivisionSize.Twelve, false)]
+	public void HasFourthShootoutRound_TrueForFiveSixAndTenTeamDivisions(DivisionSize size, bool expected) =>
+		Assert.Equal(expected, DivisionSizeRules.HasFourthShootoutRound(size));
 }

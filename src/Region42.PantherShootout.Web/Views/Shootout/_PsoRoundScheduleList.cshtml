@@ -17,6 +17,13 @@
 			{
 				<div class="mb-3">
 					<h4 class="text-muted text-uppercase small fw-bold mb-2">PSO Round @roundGroup.Key</h4>
+					@if (roundGroup.Key == 4)
+					{
+						<div class="alert alert-secondary py-1 px-2 small mb-2">
+							<i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+							Each team counts at most 3 shootout turns. Any team that already got 3 turns in Rounds 1&ndash;3 does not count its Round 4 score.
+						</div>
+					}
 
 					@foreach (var item in roundGroup)
 					{
@@ -50,7 +57,11 @@
 								<div class="col-2 text-center px-0">
 									@if (item.HasScore)
 									{
-										<span class="badge bg-primary">@item.HomePkGoals - @item.AwayPkGoals</span>
+										<span class="badge bg-primary">
+											<span class="@(item.HomePsoDoesNotCount ? "capped-round-score" : "")">@item.HomePkGoals</span>
+											-
+											<span class="@(item.AwayPsoDoesNotCount ? "capped-round-score" : "")">@item.AwayPkGoals</span>
+										</span>
 									}
 									else
 									{
@@ -62,6 +73,13 @@
 									<span class="d-sm-none">@item.AwayShortDisplay</span>
 								</div>
 							</div>
+
+							@if (!string.IsNullOrWhiteSpace(item.NonCountingPsoTeamCode))
+							{
+								<div class="small text-muted text-center mt-1 pt-1 border-top">
+									<i class="bi bi-slash-circle me-1" aria-hidden="true"></i>@item.NonCountingPsoTeamCode score does not count (already had 3 turns)
+								</div>
+							}
 						</div>
 					}
 				</div>

@@ -24,7 +24,7 @@ public static class PsoStandingsCalculator
 		ArgumentNullException.ThrowIfNull(shootoutRounds);
 
 		var maxRounds = DivisionSizeRules.GetShootoutRoundCount(division.Size);
-		var useFourthRoundCap = DivisionSizeRules.UsesPsoFourthRoundCap(division.Size);
+		var useFourthRoundCap = DivisionSizeRules.HasFourthShootoutRound(division.Size);
 		var psoOverrides = FilterPsoOverrides(kftmOverrides);
 
 		var completedRounds = shootoutRounds.Where(r => r.IsComplete).ToList();

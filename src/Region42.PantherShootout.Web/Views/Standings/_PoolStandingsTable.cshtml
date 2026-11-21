@@ -9,14 +9,24 @@
 				<div class="small text-muted">@Model.Subtitle</div>
 			}
 		</div>
-		@if (Model.Result.IsFinal)
-		{
-			<span class="badge bg-success">Final</span>
-		}
-		else
-		{
-			<span class="badge bg-secondary-subtle text-secondary-emphasis">In Progress</span>
-		}
+		<div class="d-flex align-items-center gap-2">
+			@if (Model.Result.IsFinal)
+			{
+				<span class="badge bg-success">Final</span>
+			}
+			else
+			{
+				<span class="badge bg-secondary-subtle text-secondary-emphasis">In Progress</span>
+			}
+			@if (!string.IsNullOrWhiteSpace(Model.PrintPoolUrl))
+			{
+				<a href="@Model.PrintPoolUrl"
+				   class="btn btn-sm btn-outline-secondary py-0 px-2"
+				   title="Print @Model.Title">
+					<i class="bi bi-printer me-1" aria-hidden="true"></i>Print
+				</a>
+			}
+		</div>
 	</div>
 	<div class="card-body p-0">
 		@if (Model.Result.RequiresKftmTiebreaker)

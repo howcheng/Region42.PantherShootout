@@ -1,0 +1,402 @@
+@model Region42.PantherShootout.Web.Models.DivisionPrintViewModel
+@using Region42.PantherShootout.Domain.Enums
+@{
+	Layout = null;
+	var hasPoolFilter = !string.IsNullOrWhiteSpace(Model.SelectedPoolFilter);
+	var initialVisibleCount = Model.PoolSheets.Count(s => !s.IsHiddenByInitialFilter);
+	var pageTitle = hasPoolFilter && Model.PoolSheets.Count > 1
+		? $"{Model.SelectedDivision.Name} Pool {Model.SelectedPoolFilter} — {Model.SelectedYear.Year} Panther Shootout"
+		: $"{Model.SelectedDivision.Name} — {Model.SelectedYear.Year} Panther Shootout";
+}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>@pageTitle</title>
+	<link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+	<link rel="stylesheet" href="~/css/standings-print.css" asp-append-version="true" />
+</head>
+<body class="print-page-body"
+	  data-year="@Model.SelectedYear.Year"
+	  data-division-key="@Model.SelectedDivision.DivisionKey"
+	  data-division-name="@Model.SelectedDivision.Name">
+
+	<header class="print-toolbar d-print-none">
+		<div class="print-toolbar-inner">
+			<div class="d-flex flex-wrap align-items-center gap-2">
+				<a href="/standings/@Model.SelectedYear.Year/@Model.SelectedDivision.DivisionKey"
+				   class="btn btn-sm btn-outline-secondary">
+					<i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Standings
+				</a>
+				@if (User.Identity?.IsAuthenticated == true)
+				{
+					<a href="/Scores?year=@Model.SelectedYear.Year&amp;division=@Model.SelectedDivision.DivisionKey"
+					   class="btn btn-sm btn-outline-secondary">
+						<i class="bi bi-pencil-square me-1" aria-hidden="true"></i>Enter Scores
+					</a>
+				}
+				@if (Model.SiblingDivisions.Count > 1)
+				{
+					<label for="printDivisionSelect" class="visually-hidden">Switch Division</label>
+					<select id="printDivisionSelect" class="form-select form-select-sm print-division-select">
+						@foreach (var div in Model.SiblingDivisions)
+						{
+							<option value="@div.DivisionKey" selected="@(div.Id == Model.SelectedDivision.Id)">
+								@div.Name (@div.PoolCount @(div.PoolCount == 1 ? "Pool" : "Pools"))
+							</option>
+						}
+					</select>
+				}
+			</div>
+
+			@if (Model.PoolSheets.Count > 1)
+			{
+				<div class="d-flex flex-wrap align-items-center gap-1" role="group" aria-label="Filter pool sheets to print">
+					<button type="button"
+							class="btn btn-sm @(hasPoolFilter ? "btn-outline-dark" : "btn-dark") print-pool-filter-btn"
+							data-pool="all"
+							aria-pressed="@(hasPoolFilter ? "false" : "true")">
+						All Pools (@Model.PoolSheets.Count)
+					</button>
+					@foreach (var sheet in Model.PoolSheets)
+					{
+						var isSelectedPool = hasPoolFilter &&
+							string.Equals(Model.SelectedPoolFilter, sheet.PoolName, StringComparison.OrdinalIgnoreCase);
+						<button type="button"
+								class="btn btn-sm @(isSelectedPool ? "btn-dark" : "btn-outline-dark") print-pool-filter-btn"
+								data-pool="@sheet.PoolName"
+								aria-pressed="@(isSelectedPool ? "true" : "false")">
+							Pool @sheet.PoolName
+						</button>
+					}
+				</div>
+			}
+
+			<div class="d-flex align-items-center gap-2">
+				<span class="badge bg-light text-dark border">
+					US Letter Landscape &bull;
+					<span id="visiblePageCountLabel">@initialVisibleCount @(initialVisibleCount == 1 ? "page" : "pages")</span>
+				</span>
+				<button type="button" id="printActionBtn" class="btn btn-primary btn-sm fw-semibold px-3">
+					<i class="bi bi-printer-fill me-1" aria-hidden="true"></i>Print
+				</button>
+			</div>
+		</div>
+	</header>
+
+	<main class="print-sheets-container">
+		@if (Model.PoolSheets.Count == 0)
+		{
+			<div class="alert alert-secondary m-4">
+				No pools found for @Model.SelectedDivision.Name.
+			</div>
+		}
+		else
+		{
+			@foreach (var sheet in Model.PoolSheets)
+			{
+				var sheetClasses = $"print-pool-sheet pool-size-{sheet.TeamCount}"
+					+ (sheet.IsHiddenByInitialFilter ? " d-none" : string.Empty)
+					+ (sheet.IsLastVisibleSheet ? " is-last-sheet" : string.Empty);
+
+				<section class="@sheetClasses"
+						 data-pool="@sheet.PoolName"
+						 aria-label="@sheet.HeaderTitle">
+
+					<div class="sheet-top-group">
+						<div class="sheet-header">
+							<div class="sheet-brand">
+								<img src="~/images/AYSO Region 42 logo.png" alt="AYSO Region 42" class="sheet-logo" />
+								<div>
+									<div class="sheet-year-label">@Model.SelectedYear.Name</div>
+									<h1 class="sheet-title">@sheet.HeaderTitle</h1>
+								</div>
+							</div>
+
+							<div class="sheet-header-right">
+								<div class="sheet-meta">
+									<div class="sheet-badges">
+										@if (sheet.IsPoolFinal && !sheet.RequiresKftmTiebreaker)
+										{
+											<span class="sheet-status-pill pill-final">Pool Play Final</span>
+										}
+										else if (sheet.RequiresKftmTiebreaker)
+										{
+											<span class="sheet-status-pill pill-warning">KFTM Tiebreaker Needed</span>
+										}
+										else
+										{
+											<span class="sheet-status-pill">Round @sheet.CompletedRounds of @sheet.TotalRounds Complete</span>
+										}
+									</div>
+									@if (!string.IsNullOrWhiteSpace(Model.PsoLeaderDisplay))
+									{
+										<div class="sheet-pso-leader">
+											<strong>@(Model.PsoIsFinal ? "Division PSO Winner:" : "Division PSO Leader:")</strong>
+											@Model.PsoLeaderDisplay
+										</div>
+									}
+									@if (Model.CalculatedAtUtc.HasValue && Model.CalculatedAtUtc.Value != default)
+									{
+										<div class="sheet-timestamp js-local-timestamp"
+											 data-utc-iso="@Model.CalculatedAtUtc.Value.ToString("O")">
+											Updated @Model.CalculatedAtUtc.Value.ToString("MMM d, h:mm tt") UTC
+										</div>
+									}
+									@if (!string.IsNullOrWhiteSpace(Model.PublicDivisionDisplayUrl))
+									{
+										<div class="sheet-live-url">
+											Live: <strong>@Model.PublicDivisionDisplayUrl</strong>
+										</div>
+									}
+								</div>
+
+								@if (!string.IsNullOrWhiteSpace(Model.QrCodeDataUri))
+								{
+									<div class="sheet-qr-box">
+										<img src="@Model.QrCodeDataUri"
+											 alt="QR code for @Model.PublicDivisionUrl"
+											 class="sheet-qr-img" />
+										<span class="sheet-qr-caption">Scan for Live</span>
+									</div>
+								}
+							</div>
+						</div>
+
+						<div class="sheet-section">
+							<div class="sheet-section-heading">
+								<span>Pool Standings &amp; Shootout Running Totals</span>
+								@if (sheet.RequiresKftmTiebreaker)
+								{
+									<span class="sheet-inline-note">Tied teams await live Kicks From The Mark (KFTM)</span>
+								}
+							</div>
+
+							<table class="print-table print-standings-table">
+								<thead>
+									<tr>
+										<th class="col-rank text-center">#</th>
+										<th class="col-team">Team</th>
+										<th class="col-stat text-center" title="Games Played">GP</th>
+										<th class="col-stat text-center" title="Wins">W</th>
+										<th class="col-stat text-center" title="Draws">D</th>
+										<th class="col-stat text-center" title="Losses">L</th>
+										<th class="col-stat text-center" title="Goals For">GF</th>
+										<th class="col-stat text-center" title="Goals Against">GA</th>
+										<th class="col-stat text-center" title="Goal Differential">GD</th>
+										<th class="col-stat text-center" title="Yellow Cards">YC</th>
+										<th class="col-stat text-center" title="Red Cards">RC</th>
+										<th class="col-pts text-center" title="AYSO 10-Point Standings Points">PTS</th>
+										<th class="col-pso pso-divider-left text-center" title="Shootout Running Total PK Goals For">PK GF</th>
+										<th class="col-pso text-center" title="Shootout Running Total PK Goals Against">PK GA</th>
+									</tr>
+								</thead>
+								<tbody>
+									@foreach (var row in sheet.StandingsRows)
+									{
+										var r = row.Standing;
+										var rowClass = row.IsChampion
+											? "row-champion"
+											: (row.Advances ? "row-advances" : string.Empty);
+
+										<tr class="@rowClass">
+											<td class="col-rank text-center fw-bold tabular-nums">@r.Rank</td>
+											<td class="col-team">
+												<div class="team-cell-inner">
+													<span class="team-code-box">@r.TeamDesignation</span>
+													<span class="team-name-text">@row.PrintCoachAndRegion</span>
+													@if (row.IsChampion)
+													{
+														<span class="print-flag flag-champ">CHAMP</span>
+													}
+													else if (row.Advances)
+													{
+														<span class="print-flag flag-adv">ADV</span>
+													}
+													@if (r.HasForfeit)
+													{
+														<span class="print-flag flag-forf">FORF</span>
+													}
+												</div>
+											</td>
+											<td class="col-stat text-center tabular-nums">@r.GamesPlayed</td>
+											<td class="col-stat text-center tabular-nums">@r.Wins</td>
+											<td class="col-stat text-center tabular-nums">@r.Draws</td>
+											<td class="col-stat text-center tabular-nums">@r.Losses</td>
+											<td class="col-stat text-center tabular-nums">@r.GoalsFor</td>
+											<td class="col-stat text-center tabular-nums">@r.GoalsAgainst</td>
+											<td class="col-stat text-center tabular-nums">@(r.GoalDifferential > 0 ? $"+{r.GoalDifferential}" : r.GoalDifferential.ToString())</td>
+											<td class="col-stat text-center tabular-nums">@r.YellowCards</td>
+											<td class="col-stat text-center tabular-nums">@r.RedCards</td>
+											<td class="col-pts text-center tabular-nums pts-highlight">@r.Points</td>
+											<td class="col-pso pso-divider-left text-center tabular-nums pso-gf-cell">
+												@row.PsoGoalsFor
+												@if (row.IsPsoDivisionLeader && row.PsoRoundsCompleted > 0)
+												{
+													<span class="pso-lead-mark" title="Leads Division PSO">&#9733;</span>
+												}
+											</td>
+											<td class="col-pso text-center tabular-nums">@row.PsoGoalsAgainst</td>
+										</tr>
+									}
+								</tbody>
+							</table>
+						</div>
+
+						<div class="sheet-section">
+							<div class="sheet-section-heading">
+								<span>Pool-Play Game Scores &amp; Shootout (PK) Results</span>
+								@if (Model.HasFourthShootoutRound)
+								{
+									<span class="sheet-inline-note">*4th PSO Round: Score does not count once a team already has 3 turns</span>
+								}
+							</div>
+
+							@if (sheet.Games.Count == 0)
+							{
+								<p class="mb-0 text-muted">No pool-play games scheduled.</p>
+							}
+							else
+							{
+								<table class="print-table print-games-table">
+									<thead>
+										<tr>
+											<th class="col-game-rnd text-center">Rnd</th>
+											<th class="col-game-time">Time</th>
+											<th class="col-game-fld text-center">Fld</th>
+											<th class="col-game-team">Home Team</th>
+											<th class="col-game-score text-center">Score</th>
+											<th class="col-game-team">Away Team</th>
+											<th class="col-game-pso pso-divider-left text-center">Shootout (PK)</th>
+										</tr>
+									</thead>
+									<tbody>
+										@foreach (var game in sheet.Games)
+										{
+											var homeWon = game.Winner == GameWinner.Home;
+											var awayWon = game.Winner == GameWinner.Away;
+
+											<tr>
+												<td class="col-game-rnd text-center fw-bold tabular-nums">R@(game.Round)</td>
+												<td class="col-game-time">
+													<span class="game-when-text tabular-nums">
+														@if (game.ScheduledDateTime.HasValue)
+														{
+															@game.ScheduledDateTime.Value.ToString("ddd h:mm tt")
+														}
+														else
+														{
+															<span>TBD</span>
+														}
+													</span>
+												</td>
+												<td class="col-game-fld text-center fw-bold tabular-nums">
+													@if (!string.IsNullOrWhiteSpace(game.FieldShortLabel))
+													{
+														@game.FieldShortLabel
+													}
+													else
+													{
+														<span class="score-dash">&mdash;</span>
+													}
+												</td>
+												<td class="col-game-team @(homeWon ? "team-winner" : "")">
+													<div class="game-team-inner">
+														<span class="team-name-text">@game.HomePrintName</span>
+														@if (game.HomeYellowCards > 0)
+														{
+															<span class="print-flag">YC:@game.HomeYellowCards</span>
+														}
+														@if (game.HomeRedCards > 0)
+														{
+															<span class="print-flag flag-rc">RC:@game.HomeRedCards</span>
+														}
+													</div>
+												</td>
+												<td class="col-game-score text-center tabular-nums">
+													@if (game.HasScore)
+													{
+														<span class="game-score-value">@game.HomeGoals &ndash; @game.AwayGoals</span>
+														@if (game.IsForfeit)
+														{
+															<span class="print-flag flag-forf ms-1">FORF</span>
+														}
+													}
+													else
+													{
+														<span class="score-dash">&mdash;</span>
+													}
+												</td>
+												<td class="col-game-team @(awayWon ? "team-winner" : "")">
+													<div class="game-team-inner">
+														<span class="team-name-text">@game.AwayPrintName</span>
+														@if (game.AwayYellowCards > 0)
+														{
+															<span class="print-flag">YC:@game.AwayYellowCards</span>
+														}
+														@if (game.AwayRedCards > 0)
+														{
+															<span class="print-flag flag-rc">RC:@game.AwayRedCards</span>
+														}
+													</div>
+												</td>
+												<td class="col-game-pso pso-divider-left text-center tabular-nums">
+													@if (game.HasPsoScore)
+													{
+														<span class="pso-score-value">
+															<span class="@(game.HomePsoDoesNotCount ? "pso-capped-score" : "")">@game.HomePkGoals@(game.HomePsoDoesNotCount ? "*" : "")</span>
+															&ndash;
+															<span class="@(game.AwayPsoDoesNotCount ? "pso-capped-score" : "")">@game.AwayPkGoals@(game.AwayPsoDoesNotCount ? "*" : "")</span>
+														</span>
+														@if (!string.IsNullOrWhiteSpace(game.NonCountingPsoTeamCode))
+														{
+															<span class="print-flag flag-no-count ms-1">@game.NonCountingPsoTeamCode no count*</span>
+														}
+													}
+													else if (game.HasPairedShootoutRound)
+													{
+														<span class="score-dash">&mdash;</span>
+														@if (!string.IsNullOrWhiteSpace(game.NonCountingPsoTeamCode))
+														{
+															<span class="print-flag flag-no-count ms-1">@game.NonCountingPsoTeamCode no count*</span>
+														}
+													}
+													else
+													{
+														<span class="pso-na-label">N/A</span>
+													}
+												</td>
+											</tr>
+										}
+									</tbody>
+								</table>
+							}
+						</div>
+					</div>
+
+					<footer class="sheet-footer">
+						<span>
+							<strong>10-Pt System:</strong> W=6, D=3, L=0, +1/goal (max 3), +1 shutout (non-forfeit), YC=&minus;1, RC=&minus;2.
+						</span>
+						<span>
+							<strong>PSO Shootout:</strong> Ranked division-wide by PK GF, then fewest PK GA (&#9733; = Division PSO Leader).
+							@if (Model.HasFourthShootoutRound)
+							{
+								<span> &bull; <strong>4th PSO Round:</strong> Score does not count if a team already got 3 turns.</span>
+							}
+							@if (sheet.AnyForfeitInScope)
+							{
+								<span> &bull; <strong>Forfeit in scope:</strong> Wins &amp; GD tiebreakers neutralized.</span>
+							}
+						</span>
+					</footer>
+				</section>
+			}
+		}
+	</main>
+
+	<script src="~/js/standings-print.js" asp-append-version="true"></script>
+</body>
+</html>

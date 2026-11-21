@@ -23,6 +23,8 @@ public class PoolStandingsTableViewModel
 	public int? ChampionTeamId { get; set; }
 
 	public bool ShowPoolBadgeOnTeam { get; set; }
+
+	public string? PrintPoolUrl { get; set; }
 }
 
 public class GameScheduleCardItemViewModel
@@ -37,6 +39,8 @@ public class GameScheduleCardItemViewModel
 
 	public string Location { get; set; } = string.Empty;
 
+	public string FieldShortLabel { get; set; } = string.Empty;
+
 	public int HomeTeamId { get; set; }
 
 	public string HomeCode { get; set; } = string.Empty;
@@ -45,6 +49,8 @@ public class GameScheduleCardItemViewModel
 
 	public string HomeFullName { get; set; } = string.Empty;
 
+	public string HomePrintName { get; set; } = string.Empty;
+
 	public int AwayTeamId { get; set; }
 
 	public string AwayCode { get; set; } = string.Empty;
@@ -52,6 +58,8 @@ public class GameScheduleCardItemViewModel
 	public string AwayShortName { get; set; } = string.Empty;
 
 	public string AwayFullName { get; set; } = string.Empty;
+
+	public string AwayPrintName { get; set; } = string.Empty;
 
 	public int? HomeGoals { get; set; }
 
@@ -70,6 +78,15 @@ public class GameScheduleCardItemViewModel
 	public int? HomePkGoals { get; set; }
 
 	public int? AwayPkGoals { get; set; }
+
+	public bool HasPairedShootoutRound { get; set; }
+
+	public bool HomePsoDoesNotCount { get; set; }
+
+	public bool AwayPsoDoesNotCount { get; set; }
+
+	public string? NonCountingPsoTeamCode =>
+		HomePsoDoesNotCount ? HomeCode : (AwayPsoDoesNotCount ? AwayCode : null);
 
 	public bool HasScore => HomeGoals.HasValue && AwayGoals.HasValue;
 
@@ -146,6 +163,15 @@ public class BracketMatchCardViewModel
 
 	public int? AwayPkGoals { get; set; }
 
+	public bool HasPairedRound4Pso { get; set; }
+
+	public bool HomePsoDoesNotCount { get; set; }
+
+	public bool AwayPsoDoesNotCount { get; set; }
+
+	public string? NonCountingPsoTeamDisplay =>
+		HomePsoDoesNotCount ? HomeShortDisplay : (AwayPsoDoesNotCount ? AwayShortDisplay : null);
+
 	public bool HasScore => HomeGoals.HasValue && AwayGoals.HasValue;
 
 	public bool HasRound4PsoScore => HomePkGoals.HasValue && AwayPkGoals.HasValue;
@@ -180,6 +206,8 @@ public class DivisionPsoTableViewModel
 
 	public int ScheduledRoundCount { get; set; }
 
+	public bool HasFourthShootoutRound { get; set; }
+
 	public bool UsesFourthRoundCap { get; set; }
 
 	public PsoStandingsResult Result { get; set; } = new();
@@ -189,9 +217,14 @@ public class DivisionPsoTableViewModel
 	public bool ShowFullShootoutLink { get; set; }
 
 	/// <summary>
-	/// Set of <c>TeamId</c> values that had a completed Round 4 PK score excluded due to the 5-team 3-matchup cap.
+	/// Set of <c>TeamId</c> values in Round 4 whose Round 4 shootout does not count because they already have 3 turns in Rounds 1–3.
 	/// </summary>
 	public HashSet<int> CappedFourthRoundTeamIds { get; set; } = new();
+
+	/// <summary>
+	/// Completed Round 4 PK scores that were excluded from PSO totals due to the 3-turn cap, keyed by <c>TeamId</c>.
+	/// </summary>
+	public Dictionary<int, int> ExcludedFourthRoundScoresByTeamId { get; set; } = new();
 }
 
 public class DivisionStandingsViewModel
@@ -227,4 +260,79 @@ public class DivisionStandingsViewModel
 		(PoolStandings.RunnersUpStandings?.RequiresKftmTiebreaker ?? false);
 
 	public DateTime? CalculatedAtUtc { get; set; }
+}
+
+public class PoolPrintStandingRowViewModel
+{
+	public PoolPlayStandingDto Standing { get; set; } = new();
+
+	public string PrintCoachAndRegion { get; set; } = string.Empty;
+
+	public bool IsChampion { get; set; }
+
+	public bool Advances { get; set; }
+
+	public int PsoGoalsFor { get; set; }
+
+	public int PsoGoalsAgainst { get; set; }
+
+	public int PsoRoundsCompleted { get; set; }
+
+	public bool IsPsoDivisionLeader { get; set; }
+}
+
+public class PoolPrintSheetViewModel
+{
+	public int? PoolId { get; set; }
+
+	public string PoolName { get; set; } = string.Empty;
+
+	public string HeaderTitle { get; set; } = string.Empty;
+
+	public int TeamCount { get; set; }
+
+	public int CompletedRounds { get; set; }
+
+	public int TotalRounds { get; set; }
+
+	public bool IsPoolFinal { get; set; }
+
+	public bool RequiresKftmTiebreaker { get; set; }
+
+	public bool AnyForfeitInScope { get; set; }
+
+	public List<PoolPrintStandingRowViewModel> StandingsRows { get; set; } = new();
+
+	public List<GameScheduleCardItemViewModel> Games { get; set; } = new();
+
+	public bool IsHiddenByInitialFilter { get; set; }
+
+	public bool IsLastVisibleSheet { get; set; }
+}
+
+public class DivisionPrintViewModel
+{
+	public TournamentYearDto SelectedYear { get; set; } = new();
+
+	public DivisionSummaryDto SelectedDivision { get; set; } = new();
+
+	public List<DivisionSummaryDto> SiblingDivisions { get; set; } = new();
+
+	public string? SelectedPoolFilter { get; set; }
+
+	public string? PsoLeaderDisplay { get; set; }
+
+	public bool PsoIsFinal { get; set; }
+
+	public bool HasFourthShootoutRound { get; set; }
+
+	public string PublicDivisionUrl { get; set; } = string.Empty;
+
+	public string PublicDivisionDisplayUrl { get; set; } = string.Empty;
+
+	public string QrCodeDataUri { get; set; } = string.Empty;
+
+	public DateTime? CalculatedAtUtc { get; set; }
+
+	public List<PoolPrintSheetViewModel> PoolSheets { get; set; } = new();
 }

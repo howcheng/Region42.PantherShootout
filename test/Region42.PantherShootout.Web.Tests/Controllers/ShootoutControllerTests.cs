@@ -112,6 +112,8 @@ public class ShootoutControllerTests
 
 		var view = Assert.IsType<ViewResult>(result);
 		var model = Assert.IsType<ShootoutPageViewModel>(view.Model);
+		Assert.True(model.HasFourthShootoutRound);
+		Assert.True(model.PsoTable?.HasFourthShootoutRound);
 		Assert.Single(model.Matchups);
 		Assert.Equal("Semifinal 1", model.Matchups[0].SourceLabel);
 		Assert.Contains($"{DivisionPreferenceCookieHelper.CookieName}=14u-boys", httpContext.Response.Headers.SetCookie.ToString());

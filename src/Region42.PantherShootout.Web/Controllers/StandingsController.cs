@@ -14,6 +14,117 @@ namespace Region42.PantherShootout.Web.Controllers;
 [AllowAnonymous]
 public class StandingsController : Controller
 {
+	private const int MinYear = 2000;
+	private const int MaxYear = 2100;
+
+	public static BracketTopologyKind GetBracketTopology(DivisionSize size)
+	{
+		return size switch
+		{
+			DivisionSize.Five or DivisionSize.Ten => BracketTopologyKind.NoneChampionBannerOnly,
+			DivisionSize.Six => BracketTopologyKind.SemifinalsToFinal,
+			_ => BracketTopologyKind.DirectFinals,
+		};
+	}
+
+	public static DivisionPsoTableViewModel BuildDivisionPsoViewModel(
+		int year,
+		DivisionSummaryDto division,
+		PsoStandingsResult psoResult,
+		IReadOnlyDictionary<int, Team> teamsById,
+		IReadOnlyList<ShootoutRound> shootoutRounds,
+		bool showFullShootoutLink)
+	{
+		var scheduledRounds = DivisionSizeRules.GetShootoutRoundCount(division.Size);
+		var usesCap = DivisionSizeRules.UsesPsoFourthRoundCap(division.Size);
+		var capAnalysis = PsoFourthRoundCapHelper.Analyze(division.Size, shootoutRounds);
+		var (_, leaderDisplay) = ResolvePsoLeader(psoResult, teamsById);
+
+		return new DivisionPsoTableViewModel
+		{
+			Year = year,
+			DivisionKey = division.DivisionKey,
+			DivisionName = division.Name,
+			Size = division.Size,
+			ScheduledRoundCount = scheduledRounds,
+			HasFourthShootoutRound = capAnalysis.HasFourthShootoutRound,
+			UsesFourthRoundCap = usesCap,
+			Result = psoResult,
+			LeaderOrWinnerDisplay = leaderDisplay,
+			ShowFullShootoutLink = showFullShootoutLink,
+			CappedFourthRoundTeamIds = capAnalysis.NonCountingFourthRoundTeamIds,
+			ExcludedFourthRoundScoresByTeamId = capAnalysis.ExcludedFourthRoundScoresByTeamId,
+		};
+	}
+
+	private static (int? LeaderTeamId, string? LeaderDisplay) ResolvePsoLeader(
+		PsoStandingsResult psoResult,
+		IReadOnlyDictionary<int, Team> teamsById)
+	{
+		if (psoResult.WinnerTeamId is int winnerId && teamsById.TryGetValue(winnerId, out var winner))
+		{
+			return (winnerId, $"{winner.Code} {winner.Name}");
+		}
+
+		if (psoResult.Standings.Any(s => s.RoundsCompleted > 0) && !HasTopPsoTie(psoResult))
+		{
+			var top = psoResult.Standings[0];
+			return (top.TeamId, $"{top.TeamDesignation} {top.TeamName}");
+		}
+
+		return (null, null);
+	}
+
+	private static bool HasTopPsoTie(PsoStandingsResult psoResult)
+	{
+		if (psoResult.Standings.Count < 2)
+		{
+			return false;
+		}
+
+		var first = psoResult.Standings[0];
+		var second = psoResult.Standings[1];
+		return first.TotalPkGoalsFor == second.TotalPkGoalsFor &&
+			first.TotalPkGoalsAgainst == second.TotalPkGoalsAgainst &&
+			psoResult.TiedTeamIdsForKftm.Contains(first.TeamId);
+	}
+
+	public static string FormatPrintTeam(Team? team)
+	{
+		if (team is null)
+		{
+			return "TBD";
+		}
+
+		var coachAndRegion = FormatCoachWithRegionNumber(team.CoachName, team.Name, team.RegionNumber);
+		return string.IsNullOrWhiteSpace(team.Code)
+			? coachAndRegion
+			: $"{team.Code}: {coachAndRegion}";
+	}
+
+	public static string FormatCoachWithRegionNumber(string? coachName, string fallbackName, int regionNumber)
+	{
+		var label = !string.IsNullOrWhiteSpace(coachName) ? coachName.Trim() : fallbackName.Trim();
+		return regionNumber > 0 ? $"{label} ({regionNumber})" : label;
+	}
+
+	public static string ExtractFieldNumberOrLabel(string? location)
+	{
+		if (string.IsNullOrWhiteSpace(location))
+		{
+			return string.Empty;
+		}
+
+		var trimmed = location.Trim();
+		const string fieldPrefix = "Field ";
+		if (trimmed.StartsWith(fieldPrefix, StringComparison.OrdinalIgnoreCase) && trimmed.Length > fieldPrefix.Length)
+		{
+			return trimmed[fieldPrefix.Length..].Trim();
+		}
+
+		return trimmed;
+	}
+
 	private readonly ITournamentYearService _tournamentYearService;
 	private readonly IPoolPlayStandingsService _poolPlayStandingsService;
 	private readonly IChampionshipBracketService _bracketService;
@@ -52,7 +163,7 @@ public class StandingsController : Controller
 	[HttpGet("/standings/{year:int}")]
 	public async Task<IActionResult> YearIndex(int year, CancellationToken cancellationToken = default)
 	{
-		if (year < TournamentYearServiceAccessor.MinYear || year > TournamentYearServiceAccessor.MaxYear)
+		if (year < MinYear || year > MaxYear)
 		{
 			return NotFound();
 		}
@@ -64,241 +175,6 @@ public class StandingsController : Controller
 		}
 
 		return await RedirectToPreferredOrFirstDivisionAsync(resolvedYear, cancellationToken);
-	}
-
-	[HttpGet("/standings/{year:int}/{divisionKey}")]
-	public async Task<IActionResult> Division(
-		int year,
-		string divisionKey,
-		CancellationToken cancellationToken = default)
-	{
-		if (string.IsNullOrWhiteSpace(divisionKey) ||
-			year < TournamentYearServiceAccessor.MinYear ||
-			year > TournamentYearServiceAccessor.MaxYear)
-		{
-			return NotFound();
-		}
-
-		var allYears = await _tournamentYearService.GetAllYearsAsync(cancellationToken);
-		var selectedYear = allYears.FirstOrDefault(y => y.Year == year);
-		if (selectedYear is null)
-		{
-			return NotFound();
-		}
-
-		var siblingDivisions = await _tournamentYearService.GetDivisionsForYearAsync(selectedYear.Id, cancellationToken);
-		var selectedDivision = siblingDivisions.FirstOrDefault(d =>
-			string.Equals(d.DivisionKey, divisionKey.Trim(), StringComparison.OrdinalIgnoreCase));
-
-		if (selectedDivision is null)
-		{
-			return NotFound();
-		}
-
-		DivisionPreferenceCookieHelper.SetPreferredDivisionKey(HttpContext, selectedDivision.DivisionKey);
-
-		await _dataContext.LoadDivisionDataAsync(selectedDivision.Id, cancellationToken);
-
-		var poolStandings = await _poolPlayStandingsService.CalculateForDivisionAsync(selectedDivision.Id, cancellationToken);
-		var bracketResult = await _bracketService.SeedAndProgressAsync(selectedDivision.Id, cancellationToken);
-		var psoResult = await _psoStandingsService.CalculateForDivisionAsync(selectedDivision.Id, cancellationToken);
-
-		var teamsById = _dataContext.Teams.ToDictionary(t => t.Id);
-		var poolsById = _dataContext.Pools
-			.Where(p => p.DivisionId == selectedDivision.Id)
-			.ToDictionary(p => p.Id, p => p.Name);
-		var shootoutRounds = _dataContext.ShootoutRounds
-			.Where(r => r.DivisionId == selectedDivision.Id)
-			.ToList();
-
-		var snapshot = _dataContext.GetStandingsForDivision(selectedDivision.Id);
-		var championTeamId = bracketResult.ChampionTeamId ?? snapshot?.ChampionTeamId;
-
-		var advancingTeamIds = DetermineAdvancingTeamIds(selectedDivision.Size, poolStandings);
-
-		var poolTables = poolStandings.Pools
-			.Select(p => new PoolStandingsTableViewModel
-			{
-				Title = poolStandings.Pools.Count == 1 ? $"{selectedDivision.Name} Pool Standings" : $"Pool {p.PoolName}",
-				Result = p,
-				AdvancingTeamIds = advancingTeamIds,
-				ChampionTeamId = selectedDivision.Size == DivisionSize.Five ? championTeamId : null,
-				ShowPoolBadgeOnTeam = false,
-			})
-			.ToList();
-
-		PoolStandingsTableViewModel? combinedTenTeamTable = null;
-		if (selectedDivision.Size == DivisionSize.Ten && poolStandings.CombinedDivisionStandings is not null)
-		{
-			combinedTenTeamTable = new PoolStandingsTableViewModel
-			{
-				Title = "Combined Division Standings (Determines Champion)",
-				Subtitle = "10-team divisions have no championship bracket — all 10 teams are ranked together across both pools.",
-				Result = poolStandings.CombinedDivisionStandings,
-				ChampionTeamId = championTeamId,
-				ShowPoolBadgeOnTeam = true,
-			};
-		}
-
-		PoolStandingsTableViewModel? winnersTable = null;
-		PoolStandingsTableViewModel? runnersUpTable = null;
-		if (selectedDivision.Size == DivisionSize.Twelve)
-		{
-			if (poolStandings.PoolWinnersStandings is not null)
-			{
-				var winnerAdvIds = poolStandings.PoolWinnersStandings.Standings
-					.Where(s => advancingTeamIds.Contains(s.TeamId))
-					.Select(s => s.TeamId)
-					.ToHashSet();
-				winnersTable = new PoolStandingsTableViewModel
-				{
-					Title = "Pool Winners Sub-Ranking",
-					Subtitle = "#1 & #2 play in Championship Final; #3 plays #1 Runner-Up for 3rd Place.",
-					Result = poolStandings.PoolWinnersStandings,
-					AdvancingTeamIds = winnerAdvIds,
-					ShowPoolBadgeOnTeam = true,
-				};
-			}
-
-			if (poolStandings.RunnersUpStandings is not null)
-			{
-				var topRunnerUpIds = poolStandings.RunnersUpStandings.Standings
-					.Where(s => advancingTeamIds.Contains(s.TeamId))
-					.Select(s => s.TeamId)
-					.ToHashSet();
-				runnersUpTable = new PoolStandingsTableViewModel
-				{
-					Title = "Pool Runners-Up Wildcard Sub-Ranking",
-					Subtitle = "Only #1 Runner-Up advances (plays #3 Pool Winner for 3rd Place).",
-					Result = poolStandings.RunnersUpStandings,
-					AdvancingTeamIds = topRunnerUpIds,
-					ShowPoolBadgeOnTeam = true,
-				};
-			}
-		}
-
-		var scheduleVm = BuildScheduleViewModel(
-			selectedDivision.Id,
-			teamsById,
-			poolsById,
-			shootoutRounds);
-
-		var bracketVm = BuildBracketViewModel(
-			selectedDivision,
-			bracketResult,
-			championTeamId,
-			teamsById,
-			shootoutRounds);
-
-		var psoVm = BuildDivisionPsoViewModel(
-			selectedYear.Year,
-			selectedDivision,
-			psoResult,
-			teamsById,
-			shootoutRounds,
-			showFullShootoutLink: true);
-
-		var vm = new DivisionStandingsViewModel
-		{
-			SelectedYear = selectedYear,
-			AvailableYears = allYears.ToList(),
-			SelectedDivision = selectedDivision,
-			SiblingDivisions = siblingDivisions.ToList(),
-			PoolStandings = poolStandings,
-			PoolTables = poolTables,
-			CombinedTenTeamTable = combinedTenTeamTable,
-			TwelveTeamWinnersTable = winnersTable,
-			TwelveTeamRunnersUpTable = runnersUpTable,
-			Schedule = scheduleVm,
-			Bracket = bracketVm,
-			Pso = psoVm,
-			CalculatedAtUtc = snapshot?.CalculatedAt,
-		};
-
-		return View(vm);
-	}
-
-	public static BracketTopologyKind GetBracketTopology(DivisionSize size)
-	{
-		return size switch
-		{
-			DivisionSize.Five or DivisionSize.Ten => BracketTopologyKind.NoneChampionBannerOnly,
-			DivisionSize.Six => BracketTopologyKind.SemifinalsToFinal,
-			_ => BracketTopologyKind.DirectFinals,
-		};
-	}
-
-	public static DivisionPsoTableViewModel BuildDivisionPsoViewModel(
-		int year,
-		DivisionSummaryDto division,
-		PsoStandingsResult psoResult,
-		IReadOnlyDictionary<int, Team> teamsById,
-		IReadOnlyList<ShootoutRound> shootoutRounds,
-		bool showFullShootoutLink)
-	{
-		var scheduledRounds = DivisionSizeRules.GetShootoutRoundCount(division.Size);
-		var usesCap = DivisionSizeRules.UsesPsoFourthRoundCap(division.Size);
-
-		var cappedTeamIds = new HashSet<int>();
-		if (usesCap)
-		{
-			foreach (var row in psoResult.Standings)
-			{
-				var earlyCompleted = shootoutRounds.Count(r =>
-					r.Round <= 3 &&
-					r.IsComplete &&
-					(r.HomeTeamId == row.TeamId || r.AwayTeamId == row.TeamId));
-
-				var hasRound4Complete = shootoutRounds.Any(r =>
-					r.Round == 4 &&
-					r.IsComplete &&
-					(r.HomeTeamId == row.TeamId || r.AwayTeamId == row.TeamId));
-
-				if (earlyCompleted >= DivisionSizeRules.RequiredPsoMatchupsPerTeam && hasRound4Complete)
-				{
-					cappedTeamIds.Add(row.TeamId);
-				}
-			}
-		}
-
-		string? leaderDisplay = null;
-		if (psoResult.WinnerTeamId is int winnerId && teamsById.TryGetValue(winnerId, out var winner))
-		{
-			leaderDisplay = $"{winner.Code} {winner.Name}";
-		}
-		else if (psoResult.Standings.Any(s => s.RoundsCompleted > 0) && !HasTopPsoTie(psoResult))
-		{
-			var top = psoResult.Standings[0];
-			leaderDisplay = $"{top.TeamDesignation} {top.TeamName}";
-		}
-
-		return new DivisionPsoTableViewModel
-		{
-			Year = year,
-			DivisionKey = division.DivisionKey,
-			DivisionName = division.Name,
-			Size = division.Size,
-			ScheduledRoundCount = scheduledRounds,
-			UsesFourthRoundCap = usesCap,
-			Result = psoResult,
-			LeaderOrWinnerDisplay = leaderDisplay,
-			ShowFullShootoutLink = showFullShootoutLink,
-			CappedFourthRoundTeamIds = cappedTeamIds,
-		};
-	}
-
-	private static bool HasTopPsoTie(PsoStandingsResult psoResult)
-	{
-		if (psoResult.Standings.Count < 2)
-		{
-			return false;
-		}
-
-		var first = psoResult.Standings[0];
-		var second = psoResult.Standings[1];
-		return first.TotalPkGoalsFor == second.TotalPkGoalsFor &&
-			first.TotalPkGoalsAgainst == second.TotalPkGoalsAgainst &&
-			psoResult.TiedTeamIdsForKftm.Contains(first.TeamId);
 	}
 
 	private async Task<IActionResult> RedirectToPreferredOrFirstDivisionAsync(
@@ -321,6 +197,325 @@ public class StandingsController : Controller
 			year = year.Year,
 			divisionKey = target.DivisionKey,
 		});
+	}
+
+	[HttpGet("/standings/{year:int}/{divisionKey}")]
+	public async Task<IActionResult> Division(
+		int year,
+		string divisionKey,
+		CancellationToken cancellationToken = default)
+	{
+		var ctx = await LoadDivisionPageDataAsync(year, divisionKey, cancellationToken);
+		if (ctx is null)
+		{
+			return NotFound();
+		}
+
+		var poolTables = ctx.PoolStandings.Pools
+			.Select(p => new PoolStandingsTableViewModel
+			{
+				Title = ctx.PoolStandings.Pools.Count == 1 ? $"{ctx.SelectedDivision.Name} Pool Standings" : $"Pool {p.PoolName}",
+				Result = p,
+				AdvancingTeamIds = ctx.AdvancingTeamIds,
+				ChampionTeamId = ctx.SelectedDivision.Size == DivisionSize.Five ? ctx.ChampionTeamId : null,
+				ShowPoolBadgeOnTeam = false,
+				PrintPoolUrl = BuildPoolPrintUrl(ctx.SelectedYear.Year, ctx.SelectedDivision.DivisionKey, p.PoolName),
+			})
+			.ToList();
+
+		PoolStandingsTableViewModel? combinedTenTeamTable = null;
+		if (ctx.SelectedDivision.Size == DivisionSize.Ten && ctx.PoolStandings.CombinedDivisionStandings is not null)
+		{
+			combinedTenTeamTable = new PoolStandingsTableViewModel
+			{
+				Title = "Combined Division Standings (Determines Champion)",
+				Subtitle = "10-team divisions have no championship bracket — all 10 teams are ranked together across both pools.",
+				Result = ctx.PoolStandings.CombinedDivisionStandings,
+				ChampionTeamId = ctx.ChampionTeamId,
+				ShowPoolBadgeOnTeam = true,
+			};
+		}
+
+		PoolStandingsTableViewModel? winnersTable = null;
+		PoolStandingsTableViewModel? runnersUpTable = null;
+		if (ctx.SelectedDivision.Size == DivisionSize.Twelve)
+		{
+			if (ctx.PoolStandings.PoolWinnersStandings is not null)
+			{
+				var winnerAdvIds = ctx.PoolStandings.PoolWinnersStandings.Standings
+					.Where(s => ctx.AdvancingTeamIds.Contains(s.TeamId))
+					.Select(s => s.TeamId)
+					.ToHashSet();
+				winnersTable = new PoolStandingsTableViewModel
+				{
+					Title = "Pool Winners Sub-Ranking",
+					Subtitle = "#1 & #2 play in Championship Final; #3 plays #1 Runner-Up for 3rd Place.",
+					Result = ctx.PoolStandings.PoolWinnersStandings,
+					AdvancingTeamIds = winnerAdvIds,
+					ShowPoolBadgeOnTeam = true,
+				};
+			}
+
+			if (ctx.PoolStandings.RunnersUpStandings is not null)
+			{
+				var topRunnerUpIds = ctx.PoolStandings.RunnersUpStandings.Standings
+					.Where(s => ctx.AdvancingTeamIds.Contains(s.TeamId))
+					.Select(s => s.TeamId)
+					.ToHashSet();
+				runnersUpTable = new PoolStandingsTableViewModel
+				{
+					Title = "Pool Runners-Up Wildcard Sub-Ranking",
+					Subtitle = "Only #1 Runner-Up advances (plays #3 Pool Winner for 3rd Place).",
+					Result = ctx.PoolStandings.RunnersUpStandings,
+					AdvancingTeamIds = topRunnerUpIds,
+					ShowPoolBadgeOnTeam = true,
+				};
+			}
+		}
+
+		var bracketVm = BuildBracketViewModel(
+			ctx.SelectedDivision,
+			ctx.BracketResult,
+			ctx.ChampionTeamId,
+			ctx.TeamsById,
+			ctx.ShootoutRounds,
+			ctx.PsoCapAnalysis);
+
+		var psoVm = BuildDivisionPsoViewModel(
+			ctx.SelectedYear.Year,
+			ctx.SelectedDivision,
+			ctx.PsoResult,
+			ctx.TeamsById,
+			ctx.ShootoutRounds,
+			showFullShootoutLink: true);
+
+		var vm = new DivisionStandingsViewModel
+		{
+			SelectedYear = ctx.SelectedYear,
+			AvailableYears = ctx.AllYears,
+			SelectedDivision = ctx.SelectedDivision,
+			SiblingDivisions = ctx.SiblingDivisions,
+			PoolStandings = ctx.PoolStandings,
+			PoolTables = poolTables,
+			CombinedTenTeamTable = combinedTenTeamTable,
+			TwelveTeamWinnersTable = winnersTable,
+			TwelveTeamRunnersUpTable = runnersUpTable,
+			Schedule = ctx.Schedule,
+			Bracket = bracketVm,
+			Pso = psoVm,
+			CalculatedAtUtc = ctx.CalculatedAtUtc,
+		};
+
+		return View(vm);
+	}
+
+	[HttpGet("/standings/{year:int}/{divisionKey}/print")]
+	public async Task<IActionResult> Print(
+		int year,
+		string divisionKey,
+		string? pool = null,
+		CancellationToken cancellationToken = default)
+	{
+		var ctx = await LoadDivisionPageDataAsync(year, divisionKey, cancellationToken);
+		if (ctx is null)
+		{
+			return NotFound();
+		}
+
+		var publicUrl = QrCodeHelper.BuildAbsoluteUrl(
+			Request,
+			$"/standings/{ctx.SelectedYear.Year}/{ctx.SelectedDivision.DivisionKey}");
+
+		var printVm = BuildPrintViewModel(ctx, pool, publicUrl);
+		return View(printVm);
+	}
+
+	private async Task<LoadedDivisionContext?> LoadDivisionPageDataAsync(
+		int year,
+		string divisionKey,
+		CancellationToken cancellationToken)
+	{
+		if (string.IsNullOrWhiteSpace(divisionKey) || year < MinYear || year > MaxYear)
+		{
+			return null;
+		}
+
+		var allYears = await _tournamentYearService.GetAllYearsAsync(cancellationToken);
+		var selectedYear = allYears.FirstOrDefault(y => y.Year == year);
+		if (selectedYear is null)
+		{
+			return null;
+		}
+
+		var siblingDivisions = await _tournamentYearService.GetDivisionsForYearAsync(selectedYear.Id, cancellationToken);
+		var selectedDivision = siblingDivisions.FirstOrDefault(d =>
+			string.Equals(d.DivisionKey, divisionKey.Trim(), StringComparison.OrdinalIgnoreCase));
+
+		if (selectedDivision is null)
+		{
+			return null;
+		}
+
+		DivisionPreferenceCookieHelper.SetPreferredDivisionKey(HttpContext, selectedDivision.DivisionKey);
+
+		await _dataContext.LoadDivisionDataAsync(selectedDivision.Id, cancellationToken);
+
+		var poolStandings = await _poolPlayStandingsService.CalculateForDivisionAsync(selectedDivision.Id, cancellationToken);
+		var bracketResult = await _bracketService.SeedAndProgressAsync(selectedDivision.Id, cancellationToken);
+		var psoResult = await _psoStandingsService.CalculateForDivisionAsync(selectedDivision.Id, cancellationToken);
+
+		var teamsById = _dataContext.Teams.ToDictionary(t => t.Id);
+		var poolsById = _dataContext.Pools
+			.Where(p => p.DivisionId == selectedDivision.Id)
+			.ToDictionary(p => p.Id, p => p.Name);
+		var shootoutRounds = _dataContext.ShootoutRounds
+			.Where(r => r.DivisionId == selectedDivision.Id)
+			.ToList();
+
+		var snapshot = _dataContext.GetStandingsForDivision(selectedDivision.Id);
+		var championTeamId = bracketResult.ChampionTeamId ?? snapshot?.ChampionTeamId;
+		var advancingTeamIds = DetermineAdvancingTeamIds(selectedDivision.Size, poolStandings);
+		var psoCapAnalysis = PsoFourthRoundCapHelper.Analyze(selectedDivision.Size, shootoutRounds);
+		var scheduleVm = BuildScheduleViewModel(selectedDivision.Id, teamsById, poolsById, shootoutRounds, psoCapAnalysis);
+
+		return new LoadedDivisionContext(
+			selectedYear,
+			allYears.ToList(),
+			selectedDivision,
+			siblingDivisions.ToList(),
+			poolStandings,
+			bracketResult,
+			psoResult,
+			psoCapAnalysis,
+			teamsById,
+			shootoutRounds,
+			championTeamId,
+			advancingTeamIds,
+			scheduleVm,
+			snapshot?.CalculatedAt);
+	}
+
+	private static string BuildPoolPrintUrl(int year, string divisionKey, string poolName)
+	{
+		var baseUrl = $"/standings/{year}/{divisionKey}/print";
+		return string.IsNullOrWhiteSpace(poolName)
+			? baseUrl
+			: $"{baseUrl}?pool={Uri.EscapeDataString(poolName)}";
+	}
+
+	private static DivisionPrintViewModel BuildPrintViewModel(
+		LoadedDivisionContext ctx,
+		string? requestedPool,
+		string publicDivisionUrl)
+	{
+		var (psoLeaderTeamId, psoLeaderDisplay) = ResolvePsoLeader(ctx.PsoResult, ctx.TeamsById);
+		var psoByTeamId = ctx.PsoResult.Standings.ToDictionary(s => s.TeamId);
+
+		var expectedTeamsPerPool = DivisionSizeRules.GetTeamsPerPool(ctx.SelectedDivision.Size);
+		var expectedTotalRounds = DivisionSizeRules.GetPoolPlayRoundCount(ctx.SelectedDivision.Size);
+		var noChampionshipBracket = !DivisionSizeRules.HasChampionshipBracket(ctx.SelectedDivision.Size);
+
+		string? matchedPoolFilter = null;
+		if (!string.IsNullOrWhiteSpace(requestedPool))
+		{
+			var trimmedPool = requestedPool.Trim();
+			var matchedPool = ctx.PoolStandings.Pools.FirstOrDefault(p =>
+				string.Equals(p.PoolName, trimmedPool, StringComparison.OrdinalIgnoreCase));
+			if (matchedPool is not null && !string.IsNullOrWhiteSpace(matchedPool.PoolName))
+			{
+				matchedPoolFilter = matchedPool.PoolName;
+			}
+		}
+
+		var isSinglePoolDivision = ctx.PoolStandings.Pools.Count <= 1;
+		var sheets = new List<PoolPrintSheetViewModel>(ctx.PoolStandings.Pools.Count);
+
+		foreach (var poolResult in ctx.PoolStandings.Pools)
+		{
+			var poolGames = ctx.Schedule.Games
+				.Where(g => string.Equals(g.PoolName, poolResult.PoolName, StringComparison.OrdinalIgnoreCase)
+					|| (isSinglePoolDivision && string.IsNullOrEmpty(g.PoolName)))
+				.ToList();
+
+			var maxScheduledRound = poolGames.Count > 0 ? poolGames.Max(g => g.Round) : 0;
+			var totalRounds = Math.Max(expectedTotalRounds, maxScheduledRound);
+			var completedRounds = poolGames
+				.GroupBy(g => g.Round)
+				.Count(rg => rg.Any() && rg.All(g => g.HasScore));
+
+			var teamCount = poolResult.Standings.Count > 0
+				? Math.Clamp(poolResult.Standings.Count, 3, 5)
+				: expectedTeamsPerPool;
+
+			var headerTitle = isSinglePoolDivision || string.IsNullOrWhiteSpace(poolResult.PoolName)
+				? ctx.SelectedDivision.Name
+				: $"{ctx.SelectedDivision.Name} — Pool {poolResult.PoolName}";
+
+			var rows = poolResult.Standings
+				.Select(row =>
+				{
+					psoByTeamId.TryGetValue(row.TeamId, out var psoRow);
+					var isChamp = noChampionshipBracket
+						&& ctx.ChampionTeamId.HasValue
+						&& ctx.ChampionTeamId.Value == row.TeamId;
+					var advances = !isChamp && ctx.AdvancingTeamIds.Contains(row.TeamId);
+
+					return new PoolPrintStandingRowViewModel
+					{
+						Standing = row,
+						PrintCoachAndRegion = FormatCoachWithRegionNumber(row.CoachName, row.TeamName, row.RegionNumber),
+						IsChampion = isChamp,
+						Advances = advances,
+						PsoGoalsFor = psoRow?.TotalPkGoalsFor ?? 0,
+						PsoGoalsAgainst = psoRow?.TotalPkGoalsAgainst ?? 0,
+						PsoRoundsCompleted = psoRow?.RoundsCompleted ?? 0,
+						IsPsoDivisionLeader = psoLeaderTeamId.HasValue && psoLeaderTeamId.Value == row.TeamId,
+					};
+				})
+				.ToList();
+
+			var isHidden = matchedPoolFilter is not null
+				&& !string.Equals(poolResult.PoolName, matchedPoolFilter, StringComparison.OrdinalIgnoreCase);
+
+			sheets.Add(new PoolPrintSheetViewModel
+			{
+				PoolId = poolResult.PoolId,
+				PoolName = poolResult.PoolName,
+				HeaderTitle = headerTitle,
+				TeamCount = teamCount,
+				CompletedRounds = completedRounds,
+				TotalRounds = totalRounds,
+				IsPoolFinal = poolResult.IsFinal,
+				RequiresKftmTiebreaker = poolResult.RequiresKftmTiebreaker,
+				AnyForfeitInScope = poolResult.AnyForfeitInScope,
+				StandingsRows = rows,
+				Games = poolGames,
+				IsHiddenByInitialFilter = isHidden,
+				IsLastVisibleSheet = false,
+			});
+		}
+
+		var lastVisible = sheets.LastOrDefault(s => !s.IsHiddenByInitialFilter);
+		if (lastVisible is not null)
+		{
+			lastVisible.IsLastVisibleSheet = true;
+		}
+
+		return new DivisionPrintViewModel
+		{
+			SelectedYear = ctx.SelectedYear,
+			SelectedDivision = ctx.SelectedDivision,
+			SiblingDivisions = ctx.SiblingDivisions,
+			SelectedPoolFilter = matchedPoolFilter,
+			PsoLeaderDisplay = psoLeaderDisplay,
+			PsoIsFinal = ctx.PsoResult.IsFinal && !ctx.PsoResult.RequiresKftmTiebreaker,
+			HasFourthShootoutRound = ctx.PsoCapAnalysis.HasFourthShootoutRound,
+			PublicDivisionUrl = publicDivisionUrl,
+			PublicDivisionDisplayUrl = QrCodeHelper.FormatDisplayUrl(publicDivisionUrl),
+			QrCodeDataUri = QrCodeHelper.GeneratePngDataUri(publicDivisionUrl),
+			CalculatedAtUtc = ctx.CalculatedAtUtc,
+			PoolSheets = sheets,
+		};
 	}
 
 	private static HashSet<int> DetermineAdvancingTeamIds(
@@ -403,7 +598,8 @@ public class StandingsController : Controller
 		int divisionId,
 		IReadOnlyDictionary<int, Team> teamsById,
 		IReadOnlyDictionary<int, string> poolsById,
-		IReadOnlyList<ShootoutRound> shootoutRounds)
+		IReadOnlyList<ShootoutRound> shootoutRounds,
+		PsoFourthRoundCapAnalysis psoCapAnalysis)
 	{
 		var psoByPoolGameId = shootoutRounds
 			.Where(r => r.PoolPlayGameId.HasValue)
@@ -429,14 +625,17 @@ public class StandingsController : Controller
 					PoolName = poolName,
 					ScheduledDateTime = g.ScheduledDateTime,
 					Location = g.Location,
+					FieldShortLabel = ExtractFieldNumberOrLabel(g.Location),
 					HomeTeamId = g.HomeTeamId,
 					HomeCode = home?.Code ?? string.Empty,
 					HomeShortName = FormatCompactTeam(home),
 					HomeFullName = FormatFullTeam(home),
+					HomePrintName = FormatPrintTeam(home),
 					AwayTeamId = g.AwayTeamId,
 					AwayCode = away?.Code ?? string.Empty,
 					AwayShortName = FormatCompactTeam(away),
 					AwayFullName = FormatFullTeam(away),
+					AwayPrintName = FormatPrintTeam(away),
 					HomeGoals = g.HomeGoals,
 					AwayGoals = g.AwayGoals,
 					IsForfeit = g.IsForfeit,
@@ -446,6 +645,9 @@ public class StandingsController : Controller
 					AwayRedCards = g.AwayRedCards,
 					HomePkGoals = pso?.HomePkGoals,
 					AwayPkGoals = pso?.AwayPkGoals,
+					HasPairedShootoutRound = pso is not null,
+					HomePsoDoesNotCount = pso is not null && psoCapAnalysis.IsTeamExcludedInRound(pso.Round, g.HomeTeamId),
+					AwayPsoDoesNotCount = pso is not null && psoCapAnalysis.IsTeamExcludedInRound(pso.Round, g.AwayTeamId),
 				};
 			})
 			.ToList();
@@ -464,7 +666,8 @@ public class StandingsController : Controller
 		ChampionshipBracketResult bracketResult,
 		int? championTeamId,
 		IReadOnlyDictionary<int, Team> teamsById,
-		IReadOnlyList<ShootoutRound> shootoutRounds)
+		IReadOnlyList<ShootoutRound> shootoutRounds,
+		PsoFourthRoundCapAnalysis psoCapAnalysis)
 	{
 		var psoByChampGameId = shootoutRounds
 			.Where(r => r.ChampionshipGameId.HasValue)
@@ -505,6 +708,9 @@ public class StandingsController : Controller
 					WinnerTeamId = g.WinnerTeamId,
 					HomePkGoals = r4Pso?.HomePkGoals,
 					AwayPkGoals = r4Pso?.AwayPkGoals,
+					HasPairedRound4Pso = r4Pso is not null,
+					HomePsoDoesNotCount = r4Pso is not null && psoCapAnalysis.IsTeamExcludedInRound(r4Pso.Round, g.HomeTeamId),
+					AwayPsoDoesNotCount = r4Pso is not null && psoCapAnalysis.IsTeamExcludedInRound(r4Pso.Round, g.AwayTeamId),
 				};
 			})
 			.ToList();
@@ -542,9 +748,19 @@ public class StandingsController : Controller
 		return string.IsNullOrWhiteSpace(team.Code) ? team.Name : $"{team.Code} {team.Name}";
 	}
 
-	private static class TournamentYearServiceAccessor
-	{
-		public const int MinYear = 2000;
-		public const int MaxYear = 2100;
-	}
+	private sealed record LoadedDivisionContext(
+		TournamentYearDto SelectedYear,
+		List<TournamentYearDto> AllYears,
+		DivisionSummaryDto SelectedDivision,
+		List<DivisionSummaryDto> SiblingDivisions,
+		DivisionPoolPlayStandingsResult PoolStandings,
+		ChampionshipBracketResult BracketResult,
+		PsoStandingsResult PsoResult,
+		PsoFourthRoundCapAnalysis PsoCapAnalysis,
+		IReadOnlyDictionary<int, Team> TeamsById,
+		IReadOnlyList<ShootoutRound> ShootoutRounds,
+		int? ChampionTeamId,
+		HashSet<int> AdvancingTeamIds,
+		GameScheduleListViewModel Schedule,
+		DateTime? CalculatedAtUtc);
 }

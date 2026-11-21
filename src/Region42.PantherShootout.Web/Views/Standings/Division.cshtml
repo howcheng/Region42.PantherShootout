@@ -40,6 +40,10 @@
 				}
 			</select>
 		}
+		<a href="/standings/@Model.SelectedYear.Year/@Model.SelectedDivision.DivisionKey/print"
+		   class="btn btn-sm btn-outline-secondary">
+			<i class="bi bi-printer me-1" aria-hidden="true"></i>Print
+		</a>
 		@if (User.Identity?.IsAuthenticated == true)
 		{
 			<a href="/Scores?year=@Model.SelectedYear.Year&amp;division=@Model.SelectedDivision.DivisionKey"

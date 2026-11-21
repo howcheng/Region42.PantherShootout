@@ -116,6 +116,13 @@ public static class DivisionSizeRules
 	};
 
 	/// <summary>
+	/// True when a division schedules a 4th PSO round (<c>5</c>, <c>6</c>, and <c>10</c>-team divisions).
+	/// In any 4-round division, a team's 4th-round score does not count if it already completed 3 turns in rounds 1–3.
+	/// </summary>
+	public static bool HasFourthShootoutRound(DivisionSize size) =>
+		GetShootoutRoundCount(size) == 4;
+
+	/// <summary>
 	/// 5-team pools (5- and 10-team divisions) may schedule a 4th PSO round that only counts
 	/// when the team has fewer than <see cref="RequiredPsoMatchupsPerTeam"/> results from rounds 1–3.
 	/// </summary>

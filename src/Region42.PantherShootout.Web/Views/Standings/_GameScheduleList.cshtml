@@ -92,7 +92,7 @@
 								</div>
 							</div>
 
-							@if (game.HasPsoScore || game.HomeYellowCards > 0 || game.HomeRedCards > 0 || game.AwayYellowCards > 0 || game.AwayRedCards > 0)
+							@if (game.HasPsoScore || !string.IsNullOrWhiteSpace(game.NonCountingPsoTeamCode) || game.HomeYellowCards > 0 || game.HomeRedCards > 0 || game.AwayYellowCards > 0 || game.AwayRedCards > 0)
 							{
 								<div class="d-flex flex-wrap justify-content-between align-items-center small mt-1 pt-1 border-top gap-1">
 									<div>
@@ -107,8 +107,25 @@
 									</div>
 									@if (game.HasPsoScore)
 									{
-										<span class="badge bg-info-subtle text-info-emphasis">
-											PSO PK: @game.HomePkGoals - @game.AwayPkGoals
+										<div class="text-center">
+											<span class="badge bg-info-subtle text-info-emphasis">
+												PSO PK:
+												<span class="@(game.HomePsoDoesNotCount ? "capped-round-score" : "")">@game.HomePkGoals</span>
+												-
+												<span class="@(game.AwayPsoDoesNotCount ? "capped-round-score" : "")">@game.AwayPkGoals</span>
+											</span>
+											@if (!string.IsNullOrWhiteSpace(game.NonCountingPsoTeamCode))
+											{
+												<small class="d-block text-muted">
+													@game.NonCountingPsoTeamCode score does not count (already had 3 turns)
+												</small>
+											}
+										</div>
+									}
+									else if (!string.IsNullOrWhiteSpace(game.NonCountingPsoTeamCode))
+									{
+										<span class="badge bg-secondary-subtle text-secondary-emphasis">
+											PSO R4: @game.NonCountingPsoTeamCode score does not count (already has 3 turns)
 										</span>
 									}
 									<div>

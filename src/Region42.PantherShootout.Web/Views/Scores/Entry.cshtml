@@ -21,10 +21,18 @@
 	</div>
 	@if (Model.SelectedYear is not null && Model.SelectedDivision is not null)
 	{
-		<a href="/standings/@Model.SelectedYear.Year/@Model.SelectedDivision.DivisionKey"
-		   class="btn btn-sm btn-outline-secondary">
-			<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Public @Model.SelectedDivision.ShortCode Standings
-		</a>
+		<div class="d-flex flex-wrap align-items-center gap-2">
+			<a href="/standings/@Model.SelectedYear.Year/@Model.SelectedDivision.DivisionKey/print"
+			   target="_blank"
+			   rel="noopener"
+			   class="btn btn-sm btn-outline-secondary">
+				<i class="bi bi-printer me-1" aria-hidden="true"></i>Print Pool Sheets
+			</a>
+			<a href="/standings/@Model.SelectedYear.Year/@Model.SelectedDivision.DivisionKey"
+			   class="btn btn-sm btn-outline-secondary">
+				<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Public @Model.SelectedDivision.ShortCode Standings
+			</a>
+		</div>
 	}
 </div>
 
@@ -291,6 +299,13 @@ else
 										<label class="small fw-semibold" for="psoAway_@currentPsoIdx">@card.AwayCode PK</label>
 									</div>
 								</div>
+								@if (!string.IsNullOrWhiteSpace(card.NonCountingPsoTeamCode))
+								{
+									<div class="small text-muted mt-1">
+										<i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+										Enter both PK scores &mdash; <strong>@card.NonCountingPsoTeamCode</strong> already has 3 turns in Rounds 1&ndash;3, so its Round 4 score does not count toward its PSO total.
+									</div>
+								}
 							</div>
 						}
 					</div>
@@ -397,6 +412,10 @@ else
 													   class="form-control form-control-sm score-num-input away-pk-input" />
 												<label class="small fw-semibold" for="r4PsoAway_@c">Away PK</label>
 											</div>
+										</div>
+										<div class="small text-muted mt-1">
+											<i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+											Each team counts up to 3 shootout turns (a Round 4 score does not count if a team already had 3 turns in Rounds 1&ndash;3).
 										</div>
 									</div>
 								}
@@ -519,6 +538,10 @@ else
 												   class="form-control form-control-sm score-num-input"
 												   aria-label="Away PK Goals" />
 										</div>
+									</div>
+									<div class="small text-muted mt-1">
+										<i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+										Each team counts up to 3 shootout turns (a Round 4 score does not count if a team already had 3 turns in Rounds 1&ndash;3).
 									</div>
 								</div>
 							}

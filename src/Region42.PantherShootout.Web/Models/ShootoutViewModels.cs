@@ -16,9 +16,13 @@ public class PsoMatchupItemViewModel
 
 	public bool IsSeeded { get; set; }
 
+	public string HomeCode { get; set; } = string.Empty;
+
 	public string HomeShortDisplay { get; set; } = string.Empty;
 
 	public string HomeFullDisplay { get; set; } = string.Empty;
+
+	public string AwayCode { get; set; } = string.Empty;
 
 	public string AwayShortDisplay { get; set; } = string.Empty;
 
@@ -28,12 +32,21 @@ public class PsoMatchupItemViewModel
 
 	public int? AwayPkGoals { get; set; }
 
+	public bool HomePsoDoesNotCount { get; set; }
+
+	public bool AwayPsoDoesNotCount { get; set; }
+
+	public string? NonCountingPsoTeamCode =>
+		HomePsoDoesNotCount ? HomeCode : (AwayPsoDoesNotCount ? AwayCode : null);
+
 	public bool HasScore => HomePkGoals.HasValue && AwayPkGoals.HasValue;
 }
 
 public class ShootoutPageViewModel
 {
 	public bool HasData => SelectedYear is not null && SelectedDivision is not null;
+
+	public bool HasFourthShootoutRound { get; set; }
 
 	public TournamentYearDto? SelectedYear { get; set; }
 

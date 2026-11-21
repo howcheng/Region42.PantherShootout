@@ -78,15 +78,24 @@
 							@for (var r = 0; r < Model.ScheduledRoundCount; r++)
 							{
 								var val = r < row.RoundScores.Count ? row.RoundScores[r] : null;
+								var excludedVal = 0;
+								var hasExcludedFourthScore = r == 3 &&
+									val is null &&
+									Model.ExcludedFourthRoundScoresByTeamId.TryGetValue(row.TeamId, out excludedVal);
 								var isCappedFourth = r == 3 && val is null && Model.CappedFourthRoundTeamIds.Contains(row.TeamId);
-								<td class="text-center">
+								<td class="text-center text-nowrap">
 									@if (val.HasValue)
 									{
 										<span>@val.Value</span>
 									}
+									else if (hasExcludedFourthScore)
+									{
+										<span class="capped-round-score me-1" title="Does not count — already completed 3 shootout turns in Rounds 1–3">@excludedVal</span>
+										<span class="badge bg-secondary-subtle text-secondary-emphasis" title="4th shootout turn does not count">No count</span>
+									}
 									else if (isCappedFourth)
 									{
-										<span class="text-muted small" title="3-matchup cap already reached in Rounds 1–3">Cap</span>
+										<span class="badge bg-secondary-subtle text-secondary-emphasis" title="Already has 3 turns in Rounds 1–3; Round 4 score does not count">No count</span>
 									}
 									else
 									{
@@ -104,10 +113,15 @@
 		</div>
 	</div>
 	<div class="card-footer py-2 small text-muted">
-		<strong>PSO Ranking:</strong> Total PK Goals For (highest) &rarr; PK Goals Against (lowest) &rarr; Live PSO KFTM.
-		@if (Model.UsesFourthRoundCap)
+		<div>
+			<strong>PSO Ranking:</strong> Total PK Goals For (highest) &rarr; PK Goals Against (lowest) &rarr; Live PSO KFTM.
+		</div>
+		@if (Model.HasFourthShootoutRound)
 		{
-			<span>5-team pools: Round 4 counts only for teams that had a bye in Rounds 1&ndash;3 (max 3 counted shootouts per team).</span>
+			<div class="mt-1">
+				<i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+				<strong>4th Shootout Round:</strong> Each team counts at most 3 shootout turns &mdash; in Round 4, a team&rsquo;s PK score does not count once they have already gotten their 3 turns in Rounds 1&ndash;3.
+			</div>
 		}
 	</div>
 </div>

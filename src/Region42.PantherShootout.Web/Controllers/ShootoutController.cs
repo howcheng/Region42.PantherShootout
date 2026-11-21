@@ -115,8 +115,10 @@ public class ShootoutController : Controller
 			shootoutRounds,
 			showFullShootoutLink: false);
 
+		var capAnalysis = PsoFourthRoundCapHelper.Analyze(selectedDivision.Size, shootoutRounds);
+
 		var matchups = shootoutRounds
-			.Select(r => BuildMatchupItem(r, teamsById, poolsById, poolGamesById, champGamesById))
+			.Select(r => BuildMatchupItem(r, teamsById, poolsById, poolGamesById, champGamesById, capAnalysis))
 			.OrderBy(m => m.Round)
 			.ThenBy(m => m.ScheduledDateTime ?? DateTime.MaxValue)
 			.ThenBy(m => m.Location)
@@ -124,6 +126,7 @@ public class ShootoutController : Controller
 
 		return View(new ShootoutPageViewModel
 		{
+			HasFourthShootoutRound = capAnalysis.HasFourthShootoutRound,
 			SelectedYear = selectedYear,
 			AvailableYears = allYears.ToList(),
 			SelectedDivision = selectedDivision,
@@ -138,7 +141,8 @@ public class ShootoutController : Controller
 		IReadOnlyDictionary<int, Team> teamsById,
 		IReadOnlyDictionary<int, string> poolsById,
 		IReadOnlyDictionary<int, PoolPlayGame> poolGamesById,
-		IReadOnlyDictionary<int, ChampionshipGame> champGamesById)
+		IReadOnlyDictionary<int, ChampionshipGame> champGamesById,
+		PsoFourthRoundCapAnalysis capAnalysis)
 	{
 		DateTime? scheduledDateTime = null;
 		var location = string.Empty;
@@ -173,12 +177,16 @@ public class ShootoutController : Controller
 			ScheduledDateTime = scheduledDateTime,
 			Location = location,
 			IsSeeded = homeTeam is not null && awayTeam is not null,
+			HomeCode = homeTeam?.Code ?? fallbackHome,
 			HomeShortDisplay = homeTeam is not null ? $"{homeTeam.Code} {homeTeam.CoachName}" : fallbackHome,
 			HomeFullDisplay = homeTeam is not null ? $"{homeTeam.Code} {homeTeam.Name}" : fallbackHome,
+			AwayCode = awayTeam?.Code ?? fallbackAway,
 			AwayShortDisplay = awayTeam is not null ? $"{awayTeam.Code} {awayTeam.CoachName}" : fallbackAway,
 			AwayFullDisplay = awayTeam is not null ? $"{awayTeam.Code} {awayTeam.Name}" : fallbackAway,
 			HomePkGoals = round.HomePkGoals,
 			AwayPkGoals = round.AwayPkGoals,
+			HomePsoDoesNotCount = capAnalysis.IsTeamExcludedInRound(round.Round, round.HomeTeamId),
+			AwayPsoDoesNotCount = capAnalysis.IsTeamExcludedInRound(round.Round, round.AwayTeamId),
 		};
 	}
 }

@@ -1,0 +1,537 @@
+/* US Letter Landscape (11in x 8.5in) One-Page-Per-Pool Poster Stylesheet */
+
+@page {
+  size: letter landscape;
+  margin: 0.3in 0.35in;
+}
+
+.print-page-body {
+  margin: 0;
+  padding: 0;
+  background-color: #e9ecef;
+  color: #000;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Screen-only sticky toolbar */
+.print-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  background-color: #fff;
+  border-bottom: 1px solid #ced4da;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding: 0.6rem 1rem;
+}
+
+.print-toolbar-inner {
+  max-width: 11in;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.print-division-select {
+  width: auto;
+  min-width: 190px;
+}
+
+/* Sheet preview wrapper on screen */
+.print-sheets-container {
+  padding: 1.25rem 0.75rem 2rem;
+}
+
+.print-pool-sheet {
+  width: 10.3in;
+  min-height: 7.75in;
+  margin: 0 auto 1.5rem;
+  padding: 0.25in 0.3in;
+  background-color: #fff;
+  color: #000;
+  border: 1px solid #adb5bd;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+/* Sheet Header */
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.1in;
+  margin-bottom: 0.1in;
+  border-bottom: 3px solid #000;
+}
+
+.sheet-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.sheet-logo {
+  height: 46px;
+  width: auto;
+}
+
+.sheet-year-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #343a40;
+  line-height: 1.1;
+}
+
+.sheet-title {
+  margin: 0;
+  font-weight: 800;
+  line-height: 1.05;
+  color: #000;
+}
+
+.sheet-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.sheet-meta {
+  text-align: right;
+  line-height: 1.22;
+}
+
+.sheet-qr-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.sheet-qr-img {
+  width: 0.82in;
+  height: 0.82in;
+  border: 1.5px solid #000;
+  border-radius: 0.15rem;
+  background-color: #fff;
+  image-rendering: pixelated;
+  display: block;
+}
+
+.sheet-qr-caption {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #000;
+  margin-top: 0.08rem;
+  line-height: 1;
+}
+
+.sheet-live-url {
+  font-size: 0.75rem;
+  color: #212529;
+}
+
+.sheet-status-pill {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: 2px solid #000;
+  border-radius: 0.25rem;
+  background-color: #f8f9fa;
+  color: #000;
+}
+
+.sheet-status-pill.pill-final {
+  background-color: #198754;
+  border-color: #146c43;
+  color: #fff;
+}
+
+.sheet-status-pill.pill-warning {
+  background-color: #ffc107;
+  border-color: #000;
+  color: #000;
+}
+
+.sheet-pso-leader {
+  font-size: 0.92rem;
+  margin-top: 0.15rem;
+  color: #000;
+}
+
+.sheet-timestamp {
+  font-size: 0.78rem;
+  color: #495057;
+}
+
+/* Section Blocks */
+.sheet-section {
+  margin-bottom: 0.12in;
+}
+
+.sheet-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #000;
+  margin-bottom: 0.04in;
+}
+
+.sheet-inline-note {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Shared High-Contrast Print Tables */
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  border: 2px solid #000;
+}
+
+.print-table th,
+.print-table td {
+  border: 1px solid #343a40;
+  vertical-align: middle;
+  line-height: 1.15;
+  color: #000;
+}
+
+.print-table thead th {
+  background-color: #212529;
+  color: #fff;
+  font-weight: 700;
+  border-color: #000;
+  white-space: nowrap;
+}
+
+.print-table tbody tr:nth-child(even) > td {
+  background-color: #f4f6f8;
+}
+
+.print-table tbody tr.row-champion > td {
+  background-color: #fff3cd;
+}
+
+.print-table tbody tr.row-advances > td {
+  background-color: #e6f4ea;
+}
+
+.pso-divider-left {
+  border-left: 3px solid #000 !important;
+}
+
+/* Standings Table Column Proportions */
+.print-standings-table .col-rank {
+  width: 4%;
+}
+
+.print-standings-table .col-team {
+  width: 34%;
+}
+
+.print-standings-table .col-stat {
+  width: 4.5%;
+}
+
+.print-standings-table .col-pts {
+  width: 6.5%;
+}
+
+.print-standings-table .col-pso {
+  width: 7.5%;
+}
+
+.pts-highlight {
+  font-weight: 800;
+  font-size: 1.08em;
+  background-color: #e9ecef;
+}
+
+.pso-gf-cell {
+  font-weight: 800;
+  font-size: 1.05em;
+}
+
+.pso-lead-mark {
+  font-size: 0.85em;
+  margin-left: 0.1rem;
+}
+
+.team-cell-inner,
+.game-team-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.team-code-box {
+  display: inline-block;
+  padding: 0.05rem 0.35rem;
+  font-weight: 800;
+  background-color: #000;
+  color: #fff;
+  border-radius: 0.2rem;
+  flex-shrink: 0;
+}
+
+.team-name-text {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.print-flag {
+  display: inline-block;
+  padding: 0.05rem 0.28rem;
+  font-size: 0.72em;
+  font-weight: 800;
+  border: 1px solid #000;
+  border-radius: 0.18rem;
+  background-color: #fff;
+  color: #000;
+  flex-shrink: 0;
+}
+
+.print-flag.flag-champ {
+  background-color: #ffc107;
+}
+
+.print-flag.flag-adv {
+  background-color: #198754;
+  color: #fff;
+}
+
+.print-flag.flag-rc {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+/* Games Table Column Proportions */
+.print-games-table .col-game-rnd {
+  width: 5.5%;
+}
+
+.print-games-table .col-game-time {
+  width: 15%;
+}
+
+.print-games-table .col-game-fld {
+  width: 5.5%;
+}
+
+.print-games-table .col-game-team {
+  width: 23.5%;
+}
+
+.print-games-table .col-game-score {
+  width: 10.5%;
+}
+
+.print-games-table .col-game-pso {
+  width: 16.5%;
+  white-space: nowrap;
+}
+
+.pso-capped-score {
+  text-decoration: line-through;
+  opacity: 0.65;
+  font-weight: 700;
+}
+
+.print-flag.flag-no-count {
+  background-color: #e9ecef;
+  font-weight: 700;
+}
+
+.game-when-text {
+  display: block;
+  font-size: 0.84em;
+  font-weight: 600;
+  color: #212529;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.team-winner .team-name-text {
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.game-score-value,
+.pso-score-value {
+  font-weight: 800;
+  font-size: 1.1em;
+}
+
+.score-dash,
+.pso-na-label {
+  color: #6c757d;
+  font-weight: 600;
+}
+
+/* Sheet Footer */
+.sheet-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.06in;
+  border-top: 1px solid #495057;
+  font-size: 0.78rem;
+  color: #212529;
+  line-height: 1.2;
+}
+
+/* =========================================================================
+   Pool-Size Adaptive Distance-Readable Typography
+   - .pool-size-3: 3 teams + 3 games (6 data rows) -> Largest fonts
+   - .pool-size-4: 4 teams + 6 games (10 data rows) -> Large fonts
+   - .pool-size-5: 5 teams + 10 games (15 data rows) -> Compact padding, still 14pt+
+   ========================================================================= */
+
+.pool-size-3 .sheet-title {
+  font-size: 26pt;
+}
+
+.pool-size-3 .sheet-section-heading {
+  font-size: 13pt;
+}
+
+.pool-size-3 .print-table {
+  font-size: 17pt;
+}
+
+.pool-size-3 .print-table th,
+.pool-size-3 .print-table td {
+  padding: 0.36rem 0.4rem;
+}
+
+.pool-size-4 .sheet-title {
+  font-size: 24pt;
+}
+
+.pool-size-4 .sheet-section-heading {
+  font-size: 12pt;
+}
+
+.pool-size-4 .print-table {
+  font-size: 15.5pt;
+}
+
+.pool-size-4 .print-table th,
+.pool-size-4 .print-table td {
+  padding: 0.27rem 0.35rem;
+}
+
+.pool-size-5 .sheet-title {
+  font-size: 21pt;
+}
+
+.pool-size-5 .sheet-logo {
+  height: 38px;
+}
+
+.pool-size-5 .sheet-qr-img {
+  width: 0.66in;
+  height: 0.66in;
+}
+
+.pool-size-5 .sheet-qr-caption {
+  font-size: 0.62rem;
+}
+
+.pool-size-5 .sheet-header {
+  padding-bottom: 0.06in;
+  margin-bottom: 0.06in;
+}
+
+.pool-size-5 .sheet-section {
+  margin-bottom: 0.08in;
+}
+
+.pool-size-5 .sheet-section-heading {
+  font-size: 10.5pt;
+}
+
+.pool-size-5 .print-table {
+  font-size: 13.5pt;
+}
+
+.pool-size-5 .print-table th,
+.pool-size-5 .print-table td {
+  padding: 0.15rem 0.28rem;
+}
+
+.pool-size-5 .sheet-footer {
+  font-size: 0.72rem;
+}
+
+/* Responsive horizontal scroll on small phone screens when previewing */
+@media screen and (max-width: 1080px) {
+  .print-sheets-container {
+    overflow-x: auto;
+  }
+}
+
+/* Strict Print Media Rules: 1 Landscape Sheet Per Visible Pool */
+@media print {
+  .print-page-body {
+    background-color: #fff;
+  }
+
+  .print-sheets-container {
+    padding: 0;
+    margin: 0;
+  }
+
+  .print-pool-sheet {
+    width: 100%;
+    height: 7.8in;
+    min-height: 0;
+    max-height: 7.8in;
+    margin: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    overflow: hidden;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-pool-sheet:not(.is-last-sheet) {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .print-pool-sheet.is-last-sheet {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}

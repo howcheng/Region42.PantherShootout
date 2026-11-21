@@ -221,6 +221,7 @@ public class ScoresController : Controller
 		var shootoutRounds = _dataContext.ShootoutRounds
 			.Where(r => r.DivisionId == selectedDivision.Id)
 			.ToList();
+		var psoCapAnalysis = PsoFourthRoundCapHelper.Analyze(selectedDivision.Size, shootoutRounds);
 
 		var psoByPoolGameId = shootoutRounds
 			.Where(r => r.PoolPlayGameId.HasValue)
@@ -283,6 +284,8 @@ public class ScoresController : Controller
 					PairedShootoutRoundNumber = pso?.Round,
 					HomePkGoals = pso?.HomePkGoals,
 					AwayPkGoals = pso?.AwayPkGoals,
+					HomePsoDoesNotCount = pso is not null && psoCapAnalysis.IsTeamExcludedInRound(pso.Round, g.HomeTeamId),
+					AwayPsoDoesNotCount = pso is not null && psoCapAnalysis.IsTeamExcludedInRound(pso.Round, g.AwayTeamId),
 					ModifiedAt = g.ModifiedAt,
 					ModifiedBy = g.ModifiedBy,
 				};
@@ -319,6 +322,8 @@ public class ScoresController : Controller
 					PairedRound4ShootoutId = r4Pso?.Id,
 					HomePkGoals = r4Pso?.HomePkGoals,
 					AwayPkGoals = r4Pso?.AwayPkGoals,
+					HomePsoDoesNotCount = r4Pso is not null && psoCapAnalysis.IsTeamExcludedInRound(r4Pso.Round, g.HomeTeamId),
+					AwayPsoDoesNotCount = r4Pso is not null && psoCapAnalysis.IsTeamExcludedInRound(r4Pso.Round, g.AwayTeamId),
 				};
 			})
 			.ToList();
