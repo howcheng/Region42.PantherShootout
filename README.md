@@ -42,8 +42,8 @@ The solution uses **.NET 10 (ASP.NET Core MVC / C# 14)** organized into a **4-La
 ### 2. Hosting, Storage & CI/CD
 
 - **Data Storage**: JSON documents in Google Cloud Storage (`gs://region42-storage` under the `panther-shootout` slug); mirrored on the local filesystem (`../../.local-data/storage`) during development. There is **no SQL/EF Core database**.
-- **Authentication**: Google OAuth + application-level `DomainRequirement` restricting admin access to `@aysoregion42.org`.
-- **Hosting & Deployment**: Dockerized multi-stage container deployed to **Google Cloud Run** via GitHub Actions.
+- **Authentication**: Google OAuth (`Panther Shootout (deployed)` OAuth client secrets in GCP Secret Manager) + application-level `DomainRequirement` restricting admin access to `@aysoregion42.org`.
+- **Hosting & Deployment**: Multi-stage [`Dockerfile`](Dockerfile) pushed to Google Artifact Registry (`us-west2-docker.pkg.dev/ayso-region-42/region42/region42-panther-shootout`) and deployed to **Google Cloud Run** (`region42-panther-shootout` in `us-central1`) via GitHub Actions on the `main` branch ([`ci.yml`](.github/workflows/ci.yml) and [`deploy.yml`](.github/workflows/deploy.yml)).
 
 ---
 
@@ -58,7 +58,7 @@ The solution uses **.NET 10 (ASP.NET Core MVC / C# 14)** organized into a **4-La
 Load the specific guides below as needed when working on related features:
 
 ### Architecture & Infrastructure
-- **[Site Setup, Authentication & Security Guide](docs/site-setup.md)** — Local development quick start, Google OAuth + `@aysoregion42.org` `AdminPolicy` setup, MVC middleware pipeline (forwarded headers, session `TempData`, theme cookie), `'strict-dynamic'` nonce CSP + `CspNonceScriptTagHelper`, and Cloud Run configuration.
+- **[Site Setup, Authentication, Security & Deployment Guide](docs/site-setup.md)** — Local development quick start, Google OAuth + `@aysoregion42.org` `AdminPolicy` setup, MVC middleware pipeline (forwarded headers, session `TempData`, theme cookie), `'strict-dynamic'` nonce CSP + `CspNonceScriptTagHelper`, Docker containerization, Secret Manager setup, and GitHub Actions -> Cloud Run CI/CD.
 - **[JSON File Storage Strategy](docs/json-storage.md)** — Bucket layout and `ScoresStandings` coexistence rules, JSON document schemas, `ITournamentDataContext` dirty-tracking and snapshot transactions, optimistic concurrency (`Generation`), write locks, and configuration.
 
 ### Business Rules & Feature Specifications

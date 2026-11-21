@@ -1,6 +1,6 @@
-# Site Setup, Authentication & Security Guide
+# Site Setup, Authentication, Security & Deployment Guide
 
-This guide covers local development setup, ASP.NET Core MVC pipeline configuration, `@aysoregion42.org` Google OAuth setup, Content Security Policy (`'strict-dynamic'` + automatic `<script>` nonces), and production configuration for `Region42.PantherShootout.Web`.
+This guide covers local development setup, ASP.NET Core MVC pipeline configuration, `@aysoregion42.org` Google OAuth setup, Content Security Policy (`'strict-dynamic'` + automatic `<script>` nonces), Docker containerization, and Google Cloud Run CI/CD deployment for `Region42.PantherShootout.Web`.
 
 ---
 
@@ -123,7 +123,71 @@ In `Production` (`appsettings.Production.json` + Cloud Run environment variables
 | :--- | :--- | :--- |
 | `ASPNETCORE_ENVIRONMENT` | `Production` | Enforces HSTS, `/Home/Error`, strict CSP `connect-src`, and required OAuth config. |
 | `Storage__Provider` | `Gcs` | Uses `GcsTournamentDataStore` and `GcsStorageWriteLock`. |
-| `Storage__BucketName` | `region42-storage` | Shared Region 42 GCS bucket (requires `Storage Object Admin` on the Cloud Run service account). |
+| `Storage__BucketName` | `region42-storage` | Shared Region 42 GCS bucket (requires `Storage Object Admin` on `region42-web-app@ayso-region-42.iam.gserviceaccount.com`). |
 | `Storage__CompetitionSlug` | `panther-shootout` | Isolates Panther Shootout data from `ScoresStandings` (`core-season`). |
-| `Authentication__Google__ClientId` | *(Secret Manager)* | OAuth 2.0 Web Client ID. |
-| `Authentication__Google__ClientSecret` | *(Secret Manager)* | OAuth 2.0 Web Client Secret. |
+| `Authentication__Google__ClientId` | Secret `panther-shootout-google-oauth-client-id:latest` | Client ID from the **Panther Shootout (deployed)** OAuth 2.0 Web Client. |
+| `Authentication__Google__ClientSecret` | Secret `panther-shootout-google-oauth-client-secret:latest` | Client Secret from the **Panther Shootout (deployed)** OAuth 2.0 Web Client. |
+
+---
+
+## 6. Docker & GitHub Actions CI/CD Deployment
+
+### Container Build & Local Smoke Test
+
+The solution-root [`Dockerfile`](../Dockerfile) builds `Region42.PantherShootout.Web` using a multi-stage `.NET 10` image (`mcr.microsoft.com/dotnet/sdk:10.0` -> `mcr.microsoft.com/dotnet/aspnet:10.0`), exposes port `8080`, and runs as the built-in non-root `app` user. [`.dockerignore`](../.dockerignore) excludes build outputs, IDE/agent folders, `test/`, `docs/`, `.local-data/`, and local `appsettings.*.json` overrides.
+
+To build and smoke-test the container locally (using `Development` mode + container-local filesystem storage so no GCP credentials are required):
+
+```powershell
+docker build -t region42-panther-shootout:local .
+
+docker run --rm -p 8080:8080 `
+  -e ASPNETCORE_ENVIRONMENT=Development `
+  -e Storage__Provider=LocalFile `
+  -e Storage__LocalRoot=/tmp/panther-shootout-storage `
+  region42-panther-shootout:local
+```
+
+Then browse to `http://localhost:8080`.
+
+### One-Time GCP & GitHub Repository Setup (`ayso-region-42`)
+
+Before running the production deployment workflow for the first time, complete these one-time steps:
+
+1. **Store `"Panther Shootout (deployed)"` OAuth credentials in Secret Manager**:
+   Copy the Client ID and Client Secret from the **Panther Shootout (deployed)** OAuth 2.0 Web Client in the [GCP API Credentials Console](https://console.cloud.google.com/apis/credentials?project=ayso-region-42) into Secret Manager (`printf` / `Write-Host -NoNewline` avoids trailing newlines):
+
+   ```powershell
+   # PowerShell (avoid trailing CRLF in secret payloads)
+   [System.IO.File]::WriteAllText("$env:TEMP\pso-client-id.txt", "YOUR_CLIENT_ID.apps.googleusercontent.com")
+   gcloud secrets create panther-shootout-google-oauth-client-id `
+     --project=ayso-region-42 `
+     --replication-policy=automatic `
+     --data-file="$env:TEMP\pso-client-id.txt"
+   Remove-Item "$env:TEMP\pso-client-id.txt"
+
+   [System.IO.File]::WriteAllText("$env:TEMP\pso-client-secret.txt", "YOUR_CLIENT_SECRET")
+   gcloud secrets create panther-shootout-google-oauth-client-secret `
+     --project=ayso-region-42 `
+     --replication-policy=automatic `
+     --data-file="$env:TEMP\pso-client-secret.txt"
+   Remove-Item "$env:TEMP\pso-client-secret.txt"
+   ```
+
+   *(Note: Runtime service account `region42-web-app@ayso-region-42.iam.gserviceaccount.com` already has project-level Secret Manager Secret Accessor and Storage Object Admin on `gs://region42-storage`.)*
+
+2. **Configure GitHub Actions GCP authentication secrets** on `howcheng/Region42.PantherShootout` (`Settings -> Secrets and variables -> Actions`):
+   - **Option A (Service Account Key)**: Set `GCP_SA_KEY` to the JSON key for `github-actions-deployer@ayso-region-42.iam.gserviceaccount.com` (matching `Region42.ScoresStandings`).
+   - **Option B (Workload Identity Federation)**: Set `GCP_WIF_PROVIDER` and `GCP_WIF_SERVICE_ACCOUNT`.
+
+3. **Authorize the Cloud Run Redirect URI**:
+   After the initial Cloud Run deployment creates the `region42-panther-shootout` service URL (and any custom domain mapping), add `https://<your-cloud-run-domain>/signin-google` to **Authorized redirect URIs** on the **Panther Shootout (deployed)** OAuth 2.0 Web Client in GCP Console.
+
+### GitHub Actions Workflows
+
+- **Pull Request CI ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml))**:
+  - Runs on every `pull_request` targeting `main`.
+  - Restores NuGet packages (with caching), builds the solution in `Release`, executes all unit test suites (`Domain.Tests`, `Application.Tests`, `Infrastructure.Tests`, `Web.Tests`), and uploads `.trx` test result artifacts.
+- **Cloud Run Deployment ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml))**:
+  - Runs automatically on `push` to `main` or manually via `workflow_dispatch`.
+  - Executes the full `build-and-test` job first; only when all tests pass does the `deploy` job build and push container tags (`:<commit-sha>` and `:latest`) to Artifact Registry (`us-west2-docker.pkg.dev/ayso-region-42/region42/region42-panther-shootout`) and deploy revision updates to Cloud Run service `region42-panther-shootout` (`us-central1`, `0–5` instances, `512Mi` RAM, `1` vCPU, running as `region42-web-app@ayso-region-42.iam.gserviceaccount.com`).
