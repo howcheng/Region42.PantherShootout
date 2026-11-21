@@ -1,0 +1,28 @@
+@model Region42.PantherShootout.Web.Models.ChampionshipBracketSectionViewModel
+@using Region42.PantherShootout.Domain.Enums
+
+@if (!string.IsNullOrWhiteSpace(Model.ChampionTeamDisplay))
+{
+	<div class="alert alert-success border-success d-flex align-items-center gap-3 mb-3" role="alert">
+		<i class="bi bi-trophy-fill fs-2 text-warning flex-shrink-0" aria-hidden="true"></i>
+		<div>
+			<div class="small text-uppercase fw-bold">Division Champion</div>
+			<div class="fs-5 fw-bold">@Model.ChampionTeamDisplay</div>
+			<div class="small text-muted">
+				@(Model.Size == DivisionSize.Ten
+					? "1st place in Combined Division Pool-Play Standings (no separate championship bracket for 10-team divisions)."
+					: "1st place in Pool-Play Standings (no separate championship bracket for 5-team divisions).")
+			</div>
+		</div>
+	</div>
+}
+else
+{
+	<div class="alert alert-info d-flex align-items-center gap-2 mb-3" role="alert">
+		<i class="bi bi-info-circle-fill flex-shrink-0" aria-hidden="true"></i>
+		<div class="small">
+			<strong>No Championship Bracket (@((int)Model.Size)-Team Division):</strong>
+			The #1 ranked team in @(Model.Size == DivisionSize.Ten ? "Combined Division Standings" : "Pool Standings") will be crowned Division Champion once all 5 pool-play rounds are complete.
+		</div>
+	</div>
+}

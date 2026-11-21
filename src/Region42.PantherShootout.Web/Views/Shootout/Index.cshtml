@@ -1,0 +1,78 @@
+@model Region42.PantherShootout.Web.Models.ShootoutPageViewModel
+@{
+	ViewData["Title"] = Model.SelectedDivision is not null
+		? $"{Model.SelectedDivision.Name} PSO — {Model.SelectedYear?.Year}"
+		: "Penalty Shootout (PSO)";
+}
+
+@section Styles {
+	<link rel="stylesheet" href="~/css/standings.css" asp-append-version="true" />
+	<link rel="stylesheet" href="~/css/pso.css" asp-append-version="true" />
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+	<div>
+		<div class="small text-muted">@(Model.SelectedYear?.Name ?? "Panther Shootout")</div>
+		<h1 class="h3 mb-0">
+			<i class="bi bi-bullseye text-primary me-1" aria-hidden="true"></i>Penalty Shootout (PSO)
+		</h1>
+	</div>
+
+	<div class="d-flex align-items-center gap-2">
+		@if (Model.AvailableYears.Count > 1 && Model.SelectedYear is not null)
+		{
+			<label for="psoYearSelect" class="visually-hidden">Tournament Year</label>
+			<select id="psoYearSelect"
+					class="form-select form-select-sm"
+					data-division-key="@(Model.SelectedDivision?.DivisionKey ?? "")">
+				@foreach (var y in Model.AvailableYears)
+				{
+					<option value="@y.Year" selected="@(y.Id == Model.SelectedYear.Id)">@y.Year</option>
+				}
+			</select>
+		}
+		@if (Model.SelectedYear is not null && Model.SelectedDivision is not null)
+		{
+			<a href="/standings/@Model.SelectedYear.Year/@Model.SelectedDivision.DivisionKey"
+			   class="btn btn-sm btn-outline-secondary">
+				<i class="bi bi-list-ol me-1" aria-hidden="true"></i>@Model.SelectedDivision.ShortCode Pool Standings
+			</a>
+		}
+	</div>
+</div>
+
+@if (!Model.HasData || Model.SelectedYear is null || Model.SelectedDivision is null || Model.PsoTable is null)
+{
+	<div class="alert alert-info mt-3" role="alert">
+		<i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+		Penalty Shootout standings will appear here once a tournament schedule has been published.
+	</div>
+}
+else
+{
+	<nav aria-label="Select division for PSO standings" class="pill-scroll-strip mb-3">
+		@foreach (var div in Model.Divisions)
+		{
+			var isCurrent = div.Id == Model.SelectedDivision.Id;
+			<a href="/shootout/@Model.SelectedYear.Year?division=@div.DivisionKey"
+			   class="btn btn-sm @(isCurrent ? "btn-primary" : "btn-outline-secondary")"
+			   aria-current="@(isCurrent ? "page" : null)">
+				<span class="d-sm-none">@div.ShortCode</span>
+				<span class="d-none d-sm-inline">@div.Name</span>
+			</a>
+		}
+	</nav>
+
+	<div class="row g-3">
+		<div class="col-12 col-lg-7">
+			<partial name="_DivisionPsoStandings" model="Model.PsoTable" />
+		</div>
+		<div class="col-12 col-lg-5">
+			<partial name="_PsoRoundScheduleList" model="Model.Matchups" />
+		</div>
+	</div>
+}
+
+@section Scripts {
+	<script src="~/js/pso-standings.js" asp-append-version="true"></script>
+}

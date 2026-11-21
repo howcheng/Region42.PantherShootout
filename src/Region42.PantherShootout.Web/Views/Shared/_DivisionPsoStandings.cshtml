@@ -1,0 +1,113 @@
+@model Region42.PantherShootout.Web.Models.DivisionPsoTableViewModel
+
+<div class="card">
+	<div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
+		<div>
+			<h3 class="h6 mb-0 fw-bold">
+				<i class="bi bi-bullseye text-primary me-1" aria-hidden="true"></i>@Model.DivisionName PSO Standings
+			</h3>
+			<small class="text-muted">Division-wide Penalty Shootout competition (independent of pool-play points)</small>
+		</div>
+		<div class="d-flex align-items-center gap-2">
+			@if (Model.Result.IsFinal && !Model.Result.RequiresKftmTiebreaker)
+			{
+				<span class="badge bg-success">Final</span>
+			}
+			else
+			{
+				<span class="badge bg-secondary-subtle text-secondary-emphasis">In Progress</span>
+			}
+			@if (Model.ShowFullShootoutLink)
+			{
+				<a href="/shootout/@Model.Year?division=@Model.DivisionKey" class="btn btn-sm btn-outline-primary">
+					Full PSO View <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+				</a>
+			}
+		</div>
+	</div>
+	<div class="card-body p-0">
+		@if (Model.Result.IsFinal && Model.Result.RequiresKftmTiebreaker)
+		{
+			<div class="alert alert-warning rounded-0 border-0 border-bottom mb-0 py-2 small" role="alert">
+				<i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
+				<strong>PSO KFTM Tiebreaker Needed:</strong> Top shootout teams are tied on PK Goals For and PK Goals Against.
+			</div>
+		}
+		else if (!string.IsNullOrWhiteSpace(Model.LeaderOrWinnerDisplay))
+		{
+			<div class="alert @(Model.Result.IsFinal ? "alert-success" : "alert-info") rounded-0 border-0 border-bottom mb-0 py-2 small">
+				<i class="bi @(Model.Result.IsFinal ? "bi-trophy-fill text-warning" : "bi-lightning-charge-fill") me-1" aria-hidden="true"></i>
+				<strong>@(Model.Result.IsFinal ? "PSO Champion:" : "Current PSO Leader:")</strong> @Model.LeaderOrWinnerDisplay
+			</div>
+		}
+
+		<div class="table-responsive">
+			<table class="table table-striped table-hover align-middle mb-0 standings-table">
+				<thead>
+					<tr>
+						<th class="text-center">#</th>
+						<th>Team</th>
+						@for (var r = 1; r <= Model.ScheduledRoundCount; r++)
+						{
+							<th class="text-center" title="Shootout Round @r">R@(r)</th>
+						}
+						<th class="text-center" title="Total PK Goals Scored"><strong>PK GF</strong></th>
+						<th class="text-center" title="Total PK Goals Allowed (Tiebreaker #1)">PK GA</th>
+						<th class="text-center d-none d-sm-table-cell" title="Completed Counted Shootouts">Done</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var row in Model.Result.Standings)
+					{
+						var isWinner = Model.Result.WinnerTeamId.HasValue && Model.Result.WinnerTeamId.Value == row.TeamId;
+						var compactLabel = !string.IsNullOrWhiteSpace(row.CoachName) ? row.CoachName : row.TeamName;
+
+						<tr class="@(isWinner ? "champion-row" : "")">
+							<td class="text-center fw-semibold">@row.Rank</td>
+							<td>
+								<span class="badge bg-dark me-1">@row.TeamDesignation</span>
+								<strong class="d-none d-sm-inline">@row.TeamName</strong>
+								<strong class="d-sm-none">@compactLabel</strong>
+								@if (isWinner)
+								{
+									<span class="badge bg-warning text-dark ms-1" title="PSO Winner">
+										<i class="bi bi-trophy-fill" aria-hidden="true"></i>
+									</span>
+								}
+							</td>
+							@for (var r = 0; r < Model.ScheduledRoundCount; r++)
+							{
+								var val = r < row.RoundScores.Count ? row.RoundScores[r] : null;
+								var isCappedFourth = r == 3 && val is null && Model.CappedFourthRoundTeamIds.Contains(row.TeamId);
+								<td class="text-center">
+									@if (val.HasValue)
+									{
+										<span>@val.Value</span>
+									}
+									else if (isCappedFourth)
+									{
+										<span class="text-muted small" title="3-matchup cap already reached in Rounds 1–3">Cap</span>
+									}
+									else
+									{
+										<span class="text-muted">&mdash;</span>
+									}
+								</td>
+							}
+							<td class="text-center"><strong>@row.TotalPkGoalsFor</strong></td>
+							<td class="text-center">@row.TotalPkGoalsAgainst</td>
+							<td class="text-center d-none d-sm-table-cell">@row.RoundsCompleted / 3</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+	<div class="card-footer py-2 small text-muted">
+		<strong>PSO Ranking:</strong> Total PK Goals For (highest) &rarr; PK Goals Against (lowest) &rarr; Live PSO KFTM.
+		@if (Model.UsesFourthRoundCap)
+		{
+			<span>5-team pools: Round 4 counts only for teams that had a bye in Rounds 1&ndash;3 (max 3 counted shootouts per team).</span>
+		}
+	</div>
+</div>

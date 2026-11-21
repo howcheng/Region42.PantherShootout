@@ -1,0 +1,116 @@
+@model Region42.PantherShootout.Web.Models.TournamentYearsIndexViewModel
+@{
+	ViewData["Title"] = "Manage Tournament Years";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+	<div>
+		<h1 class="h3 mb-1">Manage Tournament Years</h1>
+		<p class="text-muted small mb-0">Create tournament years, set announcements, and upload schedules.</p>
+	</div>
+	<a asp-controller="Import" asp-action="Upload" class="btn btn-primary btn-sm">
+		<i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>Import Schedule
+	</a>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+	<div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+}
+
+<div class="row g-4">
+	<div class="col-12 col-lg-5">
+		<div class="card">
+			<div class="card-header">
+				<h2 class="h6 mb-0 fw-bold">Create Tournament Year</h2>
+			</div>
+			<div class="card-body">
+				<form method="post" asp-action="CreateYear">
+					<div class="mb-3">
+						<label asp-for="NewYear" class="form-label fw-semibold">Year</label>
+						<input asp-for="NewYear" class="form-control" min="2000" max="2100" inputmode="numeric" />
+						<span asp-validation-for="NewYear" class="text-danger small"></span>
+					</div>
+					<div class="mb-3">
+						<label asp-for="NewName" class="form-label fw-semibold">Display Name (optional)</label>
+						<input asp-for="NewName" class="form-control" placeholder="@($"{Model.NewYear} Panther Shootout")" />
+						<span asp-validation-for="NewName" class="text-danger small"></span>
+					</div>
+					<div class="mb-3">
+						<label asp-for="NewCustomMessage" class="form-label fw-semibold">Tournament Announcement (optional)</label>
+						<textarea asp-for="NewCustomMessage" class="form-control" rows="2" placeholder="Weather updates, parking notes, check-in reminders..."></textarea>
+						<span asp-validation-for="NewCustomMessage" class="text-danger small"></span>
+					</div>
+					<div class="form-check mb-3">
+						<input asp-for="NewIsActive" class="form-check-input" />
+						<label asp-for="NewIsActive" class="form-check-label">Mark as active year</label>
+					</div>
+					<button type="submit" class="btn btn-primary w-100">
+						<i class="bi bi-plus-circle me-1" aria-hidden="true"></i>Create Year
+					</button>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<div class="col-12 col-lg-7">
+		<div class="card">
+			<div class="card-header">
+				<h2 class="h6 mb-0 fw-bold">Existing Tournament Years (@Model.Years.Count)</h2>
+			</div>
+			<div class="card-body">
+				@if (Model.Years.Count == 0)
+				{
+					<div class="alert alert-info mb-0">
+						<i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+						No tournament years have been created yet. Create one here or directly on the <a asp-controller="Import" asp-action="Upload">Import Schedule</a> page.
+					</div>
+				}
+				else
+				{
+					<div class="list-group">
+						@foreach (var year in Model.Years)
+						{
+							<div class="list-group-item">
+								<div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+									<div>
+										<div class="d-flex flex-wrap align-items-center gap-2">
+											<strong class="fs-6">@year.Name</strong>
+											<span class="badge bg-secondary">@year.Year</span>
+											@if (year.IsActive)
+											{
+												<span class="badge bg-success">Active</span>
+											}
+										</div>
+										<div class="small text-muted mt-1">
+											@year.DivisionCount @(year.DivisionCount == 1 ? "division" : "divisions") &bull;
+											@year.TeamCount @(year.TeamCount == 1 ? "team" : "teams")
+										</div>
+										@if (!string.IsNullOrWhiteSpace(year.CustomMessage))
+										{
+											<div class="small text-warning-emphasis mt-1">
+												<i class="bi bi-megaphone-fill me-1" aria-hidden="true"></i>@year.CustomMessage
+											</div>
+										}
+									</div>
+									<div class="d-flex flex-wrap gap-1">
+										<a asp-action="EditYear" asp-route-id="@year.Id" class="btn btn-sm btn-outline-primary">
+											<i class="bi bi-pencil me-1" aria-hidden="true"></i>Edit
+										</a>
+										<a asp-controller="Import" asp-action="Upload" asp-route-yearId="@year.Id" class="btn btn-sm btn-outline-secondary">
+											<i class="bi bi-upload me-1" aria-hidden="true"></i>Import
+										</a>
+									</div>
+								</div>
+							</div>
+						}
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+</div>
+
+@section Scripts {
+	<partial name="_ValidationScriptsPartial" />
+}

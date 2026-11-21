@@ -53,3 +53,14 @@ public class KftmOverrideUpsertDto
 
 	public int WinningTeamId { get; set; }
 }
+
+public class DivisionScoreBatchUpdateDto
+{
+	public int DivisionId { get; set; }
+
+	public List<PoolPlayScoreUpdateDto> PoolPlayScores { get; set; } = new();
+
+	public List<ChampionshipScoreUpdateDto> ChampionshipScores { get; set; } = new();
+
+	public List<PsoScoreUpdateDto> PsoScores { get; set; } = new();
+}

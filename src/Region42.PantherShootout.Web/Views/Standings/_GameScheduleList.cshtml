@@ -1,0 +1,132 @@
+@model Region42.PantherShootout.Web.Models.GameScheduleListViewModel
+@using Region42.PantherShootout.Domain.Enums
+
+<div class="card">
+	<div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
+		<h3 class="h6 mb-0 fw-bold">
+			<i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Pool-Play Scores &amp; Schedule
+		</h3>
+		@if (Model.PoolNames.Count > 1)
+		{
+			<div class="pill-scroll-strip" role="group" aria-label="Filter schedule by pool">
+				<button type="button"
+						class="btn btn-sm btn-primary schedule-pool-filter-btn"
+						data-pool="all"
+						aria-pressed="true">
+					All Pools
+				</button>
+				@foreach (var poolName in Model.PoolNames)
+				{
+					<button type="button"
+							class="btn btn-sm btn-outline-secondary schedule-pool-filter-btn"
+							data-pool="@poolName"
+							aria-pressed="false">
+						Pool @poolName
+					</button>
+				}
+			</div>
+		}
+	</div>
+	<div class="card-body">
+		@if (Model.Games.Count == 0)
+		{
+			<p class="text-muted mb-0">No pool-play games scheduled.</p>
+		}
+		else
+		{
+			@foreach (var roundGroup in Model.Games.GroupBy(g => g.Round).OrderBy(g => g.Key))
+			{
+				<div class="schedule-round-group mb-3">
+					<h4 class="text-muted text-uppercase small fw-bold mb-2">Round @roundGroup.Key</h4>
+
+					@foreach (var game in roundGroup)
+					{
+						var homeWon = game.Winner == GameWinner.Home;
+						var awayWon = game.Winner == GameWinner.Away;
+
+						<div class="schedule-match-card" data-pool="@game.PoolName">
+							<div class="d-flex justify-content-between align-items-center mb-1">
+								<span class="badge bg-primary-subtle text-primary-emphasis">Pool @game.PoolName</span>
+								<small class="text-muted">
+									@if (game.ScheduledDateTime.HasValue)
+									{
+										@game.ScheduledDateTime.Value.ToString("ddd, MMM d, h:mm tt")
+										@if (!string.IsNullOrWhiteSpace(game.Location))
+										{
+											<span> &bull; @game.Location</span>
+										}
+									}
+									else if (!string.IsNullOrWhiteSpace(game.Location))
+									{
+										<span>@game.Location</span>
+									}
+									else
+									{
+										<span class="fst-italic">Unscheduled</span>
+									}
+								</small>
+							</div>
+
+							<div class="row align-items-center g-1">
+								<div class="col-5 text-end @(homeWon ? "fw-bold text-success" : "")">
+									<span class="d-none d-sm-inline">@game.HomeFullName</span>
+									<span class="d-sm-none">@game.HomeShortName</span>
+								</div>
+								<div class="col-2 text-center px-0">
+									@if (game.HasScore)
+									{
+										<span class="badge bg-success">@game.HomeGoals - @game.AwayGoals</span>
+										@if (game.IsForfeit)
+										{
+											<small class="d-block text-warning-emphasis fw-semibold">FORF</small>
+										}
+									}
+									else
+									{
+										<span class="badge bg-secondary">vs</span>
+									}
+								</div>
+								<div class="col-5 @(awayWon ? "fw-bold text-success" : "")">
+									<span class="d-none d-sm-inline">@game.AwayFullName</span>
+									<span class="d-sm-none">@game.AwayShortName</span>
+								</div>
+							</div>
+
+							@if (game.HasPsoScore || game.HomeYellowCards > 0 || game.HomeRedCards > 0 || game.AwayYellowCards > 0 || game.AwayRedCards > 0)
+							{
+								<div class="d-flex flex-wrap justify-content-between align-items-center small mt-1 pt-1 border-top gap-1">
+									<div>
+										@if (game.HomeYellowCards > 0)
+										{
+											<span class="badge bg-warning text-dark me-1">@game.HomeCode YC: @game.HomeYellowCards</span>
+										}
+										@if (game.HomeRedCards > 0)
+										{
+											<span class="badge bg-danger me-1">@game.HomeCode RC: @game.HomeRedCards</span>
+										}
+									</div>
+									@if (game.HasPsoScore)
+									{
+										<span class="badge bg-info-subtle text-info-emphasis">
+											PSO PK: @game.HomePkGoals - @game.AwayPkGoals
+										</span>
+									}
+									<div>
+										@if (game.AwayYellowCards > 0)
+										{
+											<span class="badge bg-warning text-dark ms-1">@game.AwayCode YC: @game.AwayYellowCards</span>
+										}
+										@if (game.AwayRedCards > 0)
+										{
+											<span class="badge bg-danger ms-1">@game.AwayCode RC: @game.AwayRedCards</span>
+										}
+									</div>
+								</div>
+							}
+						</div>
+					}
+				</div>
+			}
+		}
+	</div>
+</div>

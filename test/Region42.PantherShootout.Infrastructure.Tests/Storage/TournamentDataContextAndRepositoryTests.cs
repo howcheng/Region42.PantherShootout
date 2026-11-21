@@ -335,6 +335,68 @@ public sealed class TournamentDataContextAndRepositoryTests : IDisposable
 	}
 
 	[Fact]
+	public async Task LoadDivisionDataAsync_OnFreshContextWithoutPriorLoadAll_HydratesAndAllowsSavingScores()
+	{
+		// Scope 1: Seed tournament year, division, pool, teams, and pool-play game
+		var seedContext = CreateContext("admin@aysoregion42.org");
+		var year = new TournamentYear { Year = 2026, Name = "2026 Panther Shootout", IsActive = true };
+		seedContext.Add(year);
+
+		var division = new Division
+		{
+			Id = 22,
+			TournamentYearId = year.Id,
+			AgeGroup = AgeGroup.U10,
+			Gender = Gender.Boys,
+			Name = "10U Boys",
+			Size = DivisionSize.Four,
+		};
+		seedContext.Add(division);
+
+		var pool = new Pool { DivisionId = division.Id, Name = "C" };
+		seedContext.Add(pool);
+
+		var team1 = new Team { PoolId = pool.Id, TeamNumber = 1, RegionNumber = 9, CoachName = "Mallord" };
+		var team2 = new Team { PoolId = pool.Id, TeamNumber = 2, RegionNumber = 42, CoachName = "Oakman" };
+		seedContext.Add(team1);
+		seedContext.Add(team2);
+
+		var game = new PoolPlayGame
+		{
+			DivisionId = division.Id,
+			PoolId = pool.Id,
+			Round = 1,
+			HomeTeamId = team1.Id,
+			AwayTeamId = team2.Id,
+		};
+		seedContext.Add(game);
+		await seedContext.SaveChangesAsync();
+
+		// Scope 2: Fresh scoped context (simulating POST /Scores/SaveBatch) calling LoadDivisionDataAsync directly
+		var postScopeContext = CreateContext("scorekeeper@aysoregion42.org");
+		await postScopeContext.LoadDivisionDataAsync(division.Id);
+
+		Assert.Contains(postScopeContext.Divisions, d => d.Id == division.Id);
+		var loadedGame = Assert.Single(postScopeContext.PoolPlayGames, g => g.Id == game.Id);
+		Assert.Equal("Thousand Oaks", loadedGame.HomeTeam?.RegionName);
+
+		loadedGame.HomeGoals = 2;
+		loadedGame.AwayGoals = 1;
+		postScopeContext.Update(loadedGame);
+		Assert.Equal(1, await postScopeContext.SaveChangesAsync());
+
+		// Scope 3: Verify score persisted and non-existent division still throws
+		var verifyContext = CreateContext();
+		await verifyContext.LoadDivisionDataAsync(division.Id);
+		var persistedGame = Assert.Single(verifyContext.PoolPlayGames, g => g.Id == game.Id);
+		Assert.Equal(2, persistedGame.HomeGoals);
+		Assert.Equal(1, persistedGame.AwayGoals);
+
+		var missingContext = CreateContext();
+		await Assert.ThrowsAsync<InvalidOperationException>(() => missingContext.LoadDivisionDataAsync(9999));
+	}
+
+	[Fact]
 	public void AddInfrastructure_SwitchesCleanlyBetweenLocalFileAndGcsProviders()
 	{
 		var localConfig = new ConfigurationBuilder()

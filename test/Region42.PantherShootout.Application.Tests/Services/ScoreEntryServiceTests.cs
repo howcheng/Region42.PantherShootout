@@ -221,4 +221,187 @@ public class ScoreEntryServiceTests
 		await Assert.ThrowsAsync<ArgumentException>(() => service.SavePoolPlayScoreAsync(
 			new PoolPlayScoreUpdateDto { GameId = 1, HomeGoals = home, AwayGoals = away }));
 	}
+
+	[Fact]
+	public async Task SaveDivisionScoresBatchAsync_UpdatesPoolBracketAndPsoInSingleTransaction()
+	{
+		var division = new Division
+		{
+			Id = 6,
+			TournamentYearId = 1,
+			AgeGroup = AgeGroup.U12,
+			Gender = Gender.Girls,
+			Name = "12U Girls",
+			Size = DivisionSize.Six,
+		};
+		var poolGame = new PoolPlayGame
+		{
+			Id = 101,
+			DivisionId = 6,
+			PoolId = 1,
+			Round = 3,
+			HomeTeamId = 1,
+			AwayTeamId = 2,
+		};
+		var sf1 = new ChampionshipGame
+		{
+			Id = 201,
+			DivisionId = 6,
+			Slot = BracketSlot.Semifinal1,
+			HomeSourceDescription = "Pool A 1st",
+			AwaySourceDescription = "Pool B 2nd",
+		};
+		var r4Pso = new ShootoutRound
+		{
+			Id = 301,
+			DivisionId = 6,
+			Round = 4,
+			ChampionshipGameId = 201,
+		};
+
+		var tx = new Mock<ITransaction>(MockBehavior.Strict);
+		tx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+		tx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
+
+		var context = new Mock<ITournamentDataContext>(MockBehavior.Strict);
+		context.Setup(c => c.LoadDivisionDataAsync(6, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+		context.SetupGet(c => c.Divisions).Returns([division]);
+		context.SetupGet(c => c.PoolPlayGames).Returns([poolGame]);
+		context.SetupGet(c => c.ChampionshipGames).Returns([sf1]);
+		context.SetupGet(c => c.ShootoutRounds).Returns([r4Pso]);
+		context.Setup(c => c.BeginTransactionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(tx.Object);
+		context.Setup(c => c.Update(poolGame));
+		context.Setup(c => c.Update(sf1));
+		context.Setup(c => c.Update(r4Pso));
+
+		var finalSnapshot = new DivisionStandingsSnapshotDocument { ChampionTeamId = 1 };
+		var refresh = new Mock<IStandingsRefreshService>(MockBehavior.Strict);
+		refresh.Setup(r => r.RefreshDivisionAsync(6, false, It.IsAny<CancellationToken>()))
+			.Callback(() =>
+			{
+				// Simulate 6-team bracket seeding & PSO R4 pairing sync when pool play finishes
+				sf1.HomeTeamId = 1;
+				sf1.AwayTeamId = 4;
+				r4Pso.HomeTeamId = 1;
+				r4Pso.AwayTeamId = 4;
+			})
+			.ReturnsAsync(new DivisionStandingsSnapshotDocument());
+		refresh.Setup(r => r.RefreshDivisionAsync(6, true, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(finalSnapshot);
+
+		var service = new ScoreEntryService(context.Object, refresh.Object);
+
+		var result = await service.SaveDivisionScoresBatchAsync(new DivisionScoreBatchUpdateDto
+		{
+			DivisionId = 6,
+			PoolPlayScores = [new PoolPlayScoreUpdateDto { GameId = 101, HomeGoals = 3, AwayGoals = 1 }],
+			ChampionshipScores = [new ChampionshipScoreUpdateDto { GameId = 201, HomeGoals = 2, AwayGoals = 0 }],
+			PsoScores = [new PsoScoreUpdateDto { ShootoutRoundId = 301, HomePkGoals = 4, AwayPkGoals = 3 }],
+		});
+
+		Assert.Same(finalSnapshot, result);
+		Assert.Equal(3, poolGame.HomeGoals);
+		Assert.Equal(2, sf1.HomeGoals);
+		Assert.Equal(4, r4Pso.HomePkGoals);
+		tx.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public void SaveDivisionScoresBatchAsync_ValidatesInvalidForfeitSynchronously()
+	{
+		var service = new ScoreEntryService(
+			Mock.Of<ITournamentDataContext>(),
+			Mock.Of<IStandingsRefreshService>());
+
+		Assert.Throws<ArgumentException>(() =>
+		{
+			_ = service.SaveDivisionScoresBatchAsync(new DivisionScoreBatchUpdateDto
+			{
+				DivisionId = 1,
+				PoolPlayScores =
+				[
+					new PoolPlayScoreUpdateDto { GameId = 10, HomeGoals = 2, AwayGoals = 0, IsForfeit = true },
+				],
+			});
+		});
+	}
+
+	[Fact]
+	public async Task SaveDivisionScoresBatchAsync_SkipsUpdateForUnchangedItems()
+	{
+		var division = new Division
+		{
+			Id = 22,
+			TournamentYearId = 1,
+			AgeGroup = AgeGroup.U10,
+			Gender = Gender.Boys,
+			Name = "10U Boys",
+			Size = DivisionSize.Eight,
+		};
+		var changedGame = new PoolPlayGame
+		{
+			Id = 33,
+			DivisionId = 22,
+			PoolId = 23,
+			Round = 1,
+			HomeTeamId = 24,
+			AwayTeamId = 25,
+		};
+		var unchangedGame = new PoolPlayGame
+		{
+			Id = 41,
+			DivisionId = 22,
+			PoolId = 23,
+			Round = 2,
+			HomeTeamId = 24,
+			AwayTeamId = 26,
+		};
+		var unchangedRound = new ShootoutRound
+		{
+			Id = 34,
+			DivisionId = 22,
+			Round = 1,
+			PoolPlayGameId = 33,
+			HomeTeamId = 24,
+			AwayTeamId = 25,
+		};
+
+		var tx = new Mock<ITransaction>(MockBehavior.Strict);
+		tx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+		tx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
+
+		var context = new Mock<ITournamentDataContext>(MockBehavior.Strict);
+		context.Setup(c => c.LoadDivisionDataAsync(22, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+		context.SetupGet(c => c.Divisions).Returns([division]);
+		context.SetupGet(c => c.PoolPlayGames).Returns([changedGame, unchangedGame]);
+		context.SetupGet(c => c.ShootoutRounds).Returns([unchangedRound]);
+		context.Setup(c => c.BeginTransactionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(tx.Object);
+		context.Setup(c => c.Update(changedGame));
+
+		var refresh = new Mock<IStandingsRefreshService>(MockBehavior.Strict);
+		refresh.Setup(r => r.RefreshDivisionAsync(22, false, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new DivisionStandingsSnapshotDocument());
+		refresh.Setup(r => r.RefreshDivisionAsync(22, true, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new DivisionStandingsSnapshotDocument());
+
+		var service = new ScoreEntryService(context.Object, refresh.Object);
+
+		await service.SaveDivisionScoresBatchAsync(new DivisionScoreBatchUpdateDto
+		{
+			DivisionId = 22,
+			PoolPlayScores =
+			[
+				new PoolPlayScoreUpdateDto { GameId = 33, HomeGoals = 2, AwayGoals = 1 },
+				new PoolPlayScoreUpdateDto { GameId = 41, HomeGoals = null, AwayGoals = null },
+			],
+			PsoScores =
+			[
+				new PsoScoreUpdateDto { ShootoutRoundId = 34, HomePkGoals = null, AwayPkGoals = null },
+			],
+		});
+
+		context.Verify(c => c.Update(changedGame), Times.Once);
+		context.Verify(c => c.Update(unchangedGame), Times.Never);
+		context.Verify(c => c.Update(unchangedRound), Times.Never);
+	}
 }

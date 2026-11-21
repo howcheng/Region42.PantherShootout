@@ -1,0 +1,183 @@
+@model Region42.PantherShootout.Web.Models.ScheduleUploadViewModel
+@{
+	ViewData["Title"] = "Import Schedule Workbook";
+}
+
+@section Styles {
+	<link rel="stylesheet" href="~/css/schedule-import.css" asp-append-version="true" />
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+	<div>
+		<h1 class="h3 mb-1">Import Schedule Workbook (.xlsx)</h1>
+		<p class="text-muted mb-0 small">
+			Two-step validation &amp; preview for Panther Shootout divisions, pools, teams, pool-play schedules, brackets, and PSO rounds.
+		</p>
+	</div>
+	<div class="d-flex gap-2">
+		<a asp-controller="Admin" asp-action="Years" class="btn btn-outline-secondary btn-sm">
+			<i class="bi bi-calendar-event me-1" aria-hidden="true"></i>Years
+		</a>
+		<a asp-controller="Admin" asp-action="Regions" asp-route-returnToImport="true" class="btn btn-outline-secondary btn-sm">
+			<i class="bi bi-geo-alt me-1" aria-hidden="true"></i>AYSO Regions
+		</a>
+	</div>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+	<div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+}
+
+<div class="card mb-4">
+	<div class="card-body">
+		<h2 class="h6 fw-bold mb-2">
+			<i class="bi bi-info-circle-fill text-primary me-1" aria-hidden="true"></i>Workbook Requirements
+		</h2>
+		<ul class="small mb-0 ps-3">
+			<li>Upload the tournament director's master Excel <code>.xlsx</code> workbook containing the <strong>Pools</strong> and <strong>Schedule</strong> tabs (any extra/hidden tabs are ignored).</li>
+			<li>Teams on <strong>Pools</strong> use discrete codes (e.g. <code>A1</code>) paired with <code>&lt;DIV&gt;-&lt;REGION#&gt;-&lt;COACH&gt;</code> (e.g. <code>10UG-121-Wright</code>).</li>
+			<li>If any AYSO region number is not yet in <code>regions.json</code>, you can add it in <strong>AYSO Regions</strong> and re-upload.</li>
+			<li>Nothing is saved during Step 1 — you will review all divisions, games, and bracket cell mappings on the next screen before confirming.</li>
+		</ul>
+	</div>
+</div>
+
+@if (Model.ValidationErrors.Count > 0)
+{
+	<div class="card border-danger mb-4">
+		<div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+			<span class="fw-bold">
+				<i class="bi bi-exclamation-octagon-fill me-1" aria-hidden="true"></i>
+				Validation Failed (@Model.ValidationErrors.Count @(Model.ValidationErrors.Count == 1 ? "error" : "errors"))
+			</span>
+			@if (!string.IsNullOrWhiteSpace(Model.UploadedFileName))
+			{
+				<span class="badge bg-light text-dark">@Model.UploadedFileName</span>
+			}
+		</div>
+		<div class="card-body">
+			@if (Model.MissingRegionNumbers.Count > 0)
+			{
+				<div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+					<div>
+						<strong>Unmapped AYSO Region Number(s):</strong>
+						@string.Join(", ", Model.MissingRegionNumbers.OrderBy(r => r))
+						<div class="small text-muted">Add the missing region name(s) first, then upload this workbook again.</div>
+					</div>
+					<div class="d-flex flex-wrap gap-1">
+						@foreach (var regionNum in Model.MissingRegionNumbers.OrderBy(r => r))
+						{
+							<a asp-controller="Admin"
+							   asp-action="Regions"
+							   asp-route-missingRegion="@regionNum"
+							   asp-route-returnToImport="true"
+							   class="btn btn-sm btn-warning">
+								<i class="bi bi-plus-circle me-1" aria-hidden="true"></i>Add Region @regionNum
+							</a>
+						}
+					</div>
+				</div>
+			}
+
+			@foreach (var sheetGroup in Model.ValidationErrors.GroupBy(e => string.IsNullOrWhiteSpace(e.SheetName) ? "Workbook" : e.SheetName))
+			{
+				<h3 class="h6 fw-bold mt-2 mb-2">@sheetGroup.Key Sheet (@sheetGroup.Count())</h3>
+				<div class="list-group mb-3">
+					@foreach (var err in sheetGroup)
+					{
+						<div class="list-group-item">
+							<div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+								<span class="badge bg-danger-subtle text-danger-emphasis error-code-badge">@err.Code</span>
+								@if (!string.IsNullOrWhiteSpace(err.CellReference))
+								{
+									<span class="badge bg-secondary">Cell @err.CellReference</span>
+								}
+							</div>
+							<div class="small">@err.Message</div>
+						</div>
+					}
+				</div>
+			}
+		</div>
+	</div>
+}
+
+<form method="post" enctype="multipart/form-data" asp-action="Upload" id="scheduleUploadForm">
+	<div class="card mb-4">
+		<div class="card-header">
+			<h2 class="h6 mb-0 fw-bold">1. Select Tournament Year</h2>
+		</div>
+		<div class="card-body">
+			<div class="mb-3">
+				<label for="selectedTournamentYearId" class="form-label fw-semibold">Tournament Year</label>
+				<select class="form-select"
+						id="selectedTournamentYearId"
+						name="selectedTournamentYearId"
+						asp-items="Model.YearOptions">
+				</select>
+			</div>
+
+			<div id="newYearContainer" class="@(Model.SelectedTournamentYearId == 0 ? "" : "d-none") border rounded p-3 bg-body-tertiary">
+				<div class="row g-3">
+					<div class="col-12 col-sm-4">
+						<label for="newYear" class="form-label fw-semibold">Year</label>
+						<input type="number"
+							   class="form-control"
+							   id="newYear"
+							   name="newYear"
+							   value="@Model.NewYear"
+							   min="2000"
+							   max="2100"
+							   inputmode="numeric" />
+					</div>
+					<div class="col-12 col-sm-8">
+						<label for="newYearName" class="form-label fw-semibold">Display Name (optional)</label>
+						<input type="text"
+							   class="form-control"
+							   id="newYearName"
+							   name="newYearName"
+							   value="@Model.NewYearName"
+							   maxlength="120"
+							   placeholder="@Model.DefaultNewYearName" />
+						<div class="form-text">
+							Defaults to <strong id="defaultNewYearNamePreview">@Model.DefaultNewYearName</strong> if left blank.
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="card mb-4">
+		<div class="card-header">
+			<h2 class="h6 mb-0 fw-bold">2. Choose Excel Schedule Workbook</h2>
+		</div>
+		<div class="card-body">
+			<label for="workbookFile" class="form-label fw-semibold">Excel File (<code>.xlsx</code>)</label>
+			<input type="file"
+				   class="form-control"
+				   id="workbookFile"
+				   name="workbookFile"
+				   accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+				   required />
+			@if (ViewData.ModelState["workbookFile"]?.Errors.Count > 0)
+			{
+				<div class="text-danger small mt-1">@ViewData.ModelState["workbookFile"]?.Errors[0].ErrorMessage</div>
+			}
+		</div>
+	</div>
+
+	<div class="d-flex flex-wrap gap-2">
+		<button type="submit" class="btn btn-primary btn-lg" id="validateUploadBtn">
+			<span class="spinner-border spinner-border-sm d-none me-1" id="uploadBtnSpinner" role="status" aria-hidden="true"></span>
+			<i class="bi bi-check2-circle me-1" id="uploadBtnIcon" aria-hidden="true"></i>
+			Validate &amp; Preview
+		</button>
+		<a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary btn-lg">Cancel</a>
+	</div>
+</form>
+
+@section Scripts {
+	<script src="~/js/import-upload.js" asp-append-version="true"></script>
+}

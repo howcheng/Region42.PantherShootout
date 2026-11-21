@@ -30,6 +30,48 @@
 						<li class="nav-item">
 							<a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
 						</li>
+						<li class="nav-item">
+							<a class="nav-link text-dark" href="/standings">Standings</a>
+						</li>
+						<li class="nav-item">
+							<a class="nav-link text-dark" href="/shootout">Shootout (PSO)</a>
+						</li>
+						@if (User.Identity?.IsAuthenticated == true)
+						{
+							<li class="nav-item dropdown">
+								<a class="nav-link dropdown-toggle text-dark" href="#" id="adminNavDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+									Admin
+								</a>
+								<ul class="dropdown-menu" aria-labelledby="adminNavDropdown">
+									<li>
+										<a class="dropdown-item" asp-area="" asp-controller="Scores" asp-action="Entry">
+											<i class="bi bi-pencil-square me-1" aria-hidden="true"></i>Enter Scores
+										</a>
+									</li>
+									<li>
+										<a class="dropdown-item" asp-area="" asp-controller="Import" asp-action="Upload">
+											<i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>Import Schedule
+										</a>
+									</li>
+									<li><hr class="dropdown-divider" /></li>
+									<li>
+										<a class="dropdown-item" asp-area="" asp-controller="Admin" asp-action="Years">
+											<i class="bi bi-calendar-event me-1" aria-hidden="true"></i>Tournament Years
+										</a>
+									</li>
+									<li>
+										<a class="dropdown-item" asp-area="" asp-controller="Admin" asp-action="Divisions">
+											<i class="bi bi-megaphone me-1" aria-hidden="true"></i>Division Bulletins
+										</a>
+									</li>
+									<li>
+										<a class="dropdown-item" asp-area="" asp-controller="Admin" asp-action="Regions">
+											<i class="bi bi-geo-alt me-1" aria-hidden="true"></i>AYSO Regions
+										</a>
+									</li>
+								</ul>
+							</li>
+						}
 					</ul>
 					<ul class="navbar-nav align-items-sm-center">
 						@if (User.Identity?.IsAuthenticated == true)

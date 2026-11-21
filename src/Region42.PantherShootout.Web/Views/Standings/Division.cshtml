@@ -1,0 +1,312 @@
+@model Region42.PantherShootout.Web.Models.DivisionStandingsViewModel
+@using Region42.PantherShootout.Domain.Enums
+@using Region42.PantherShootout.Web.Models
+@{
+	ViewData["Title"] = $"{Model.SelectedDivision.Name} — {Model.SelectedYear.Year}";
+	var hasBracketTab = Model.Bracket.Topology != BracketTopologyKind.NoneChampionBannerOnly;
+	var poolColClass = Model.PoolTables.Count switch
+	{
+		1 => "col-12",
+		2 => "col-12 col-xl-6",
+		_ => "col-12 col-xl-4",
+	};
+}
+
+@section Styles {
+	<link rel="stylesheet" href="~/css/standings.css" asp-append-version="true" />
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+	<div>
+		<div class="small text-muted">@Model.SelectedYear.Name</div>
+		<h1 class="h3 mb-0 d-flex align-items-center gap-2">
+			<span>@Model.SelectedDivision.Name</span>
+			<span class="badge bg-secondary-subtle text-secondary-emphasis fs-6 fw-normal">
+				@Model.SelectedDivision.TeamCount Teams &bull; @Model.SelectedDivision.PoolCount @(Model.SelectedDivision.PoolCount == 1 ? "Pool" : "Pools")
+			</span>
+		</h1>
+	</div>
+
+	<div class="d-flex align-items-center gap-2">
+		@if (Model.AvailableYears.Count > 1)
+		{
+			<label for="divisionYearSelect" class="visually-hidden">Tournament Year</label>
+			<select id="divisionYearSelect"
+					class="form-select form-select-sm"
+					data-division-key="@Model.SelectedDivision.DivisionKey">
+				@foreach (var y in Model.AvailableYears)
+				{
+					<option value="@y.Year" selected="@(y.Id == Model.SelectedYear.Id)">@y.Year</option>
+				}
+			</select>
+		}
+		@if (User.Identity?.IsAuthenticated == true)
+		{
+			<a href="/Scores?year=@Model.SelectedYear.Year&amp;division=@Model.SelectedDivision.DivisionKey"
+			   class="btn btn-sm btn-outline-primary">
+				<i class="bi bi-pencil-square me-1" aria-hidden="true"></i>Enter Scores
+			</a>
+		}
+	</div>
+</div>
+
+@if (Model.SiblingDivisions.Count > 1)
+{
+	<nav aria-label="Switch division" class="pill-scroll-strip mb-3">
+		@foreach (var sibling in Model.SiblingDivisions)
+		{
+			var isCurrent = sibling.Id == Model.SelectedDivision.Id;
+			<a href="/standings/@Model.SelectedYear.Year/@sibling.DivisionKey"
+			   class="btn btn-sm @(isCurrent ? "btn-dark" : "btn-outline-secondary")"
+			   aria-current="@(isCurrent ? "page" : null)">
+				<span class="d-sm-none">@sibling.ShortCode</span>
+				<span class="d-none d-sm-inline">@sibling.Name</span>
+			</a>
+		}
+	</nav>
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.SelectedYear.CustomMessage))
+{
+	<div class="alert alert-warning border-warning d-flex align-items-start gap-2 py-2 mb-2" role="alert">
+		<i class="bi bi-megaphone-fill flex-shrink-0 mt-1" aria-hidden="true"></i>
+		<div class="small"><strong>Tournament Announcement:</strong> @Model.SelectedYear.CustomMessage</div>
+	</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.SelectedDivision.CustomMessage))
+{
+	<div class="alert alert-info border-info d-flex align-items-start gap-2 py-2 mb-3" role="alert">
+		<i class="bi bi-info-circle-fill flex-shrink-0 mt-1" aria-hidden="true"></i>
+		<div class="small"><strong>@Model.SelectedDivision.Name Bulletin:</strong> @Model.SelectedDivision.CustomMessage</div>
+	</div>
+}
+
+@if (Model.Bracket.Topology == BracketTopologyKind.NoneChampionBannerOnly)
+{
+	<partial name="_DivisionChampionBanner" model="Model.Bracket" />
+}
+
+<!-- Mobile-only sticky section tabs (< 992px); on lg+ all panes remain visible -->
+<div class="division-sticky-tabs d-lg-none">
+	<ul class="nav nav-pills pill-scroll-strip" id="divisionMobileTabs" role="tablist">
+		<li class="nav-item" role="presentation">
+			<button class="nav-link active"
+					id="tab-btn-standings"
+					data-bs-toggle="pill"
+					data-bs-target="#pane-standings"
+					type="button"
+					role="tab"
+					aria-controls="pane-standings"
+					aria-selected="true">
+				<i class="bi bi-list-ol me-1" aria-hidden="true"></i>Standings
+			</button>
+		</li>
+		<li class="nav-item" role="presentation">
+			<button class="nav-link"
+					id="tab-btn-schedule"
+					data-bs-toggle="pill"
+					data-bs-target="#pane-schedule"
+					type="button"
+					role="tab"
+					aria-controls="pane-schedule"
+					aria-selected="false">
+				<i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Scores &amp; Schedule
+			</button>
+		</li>
+		@if (hasBracketTab)
+		{
+			<li class="nav-item" role="presentation">
+				<button class="nav-link"
+						id="tab-btn-bracket"
+						data-bs-toggle="pill"
+						data-bs-target="#pane-bracket"
+						type="button"
+						role="tab"
+						aria-controls="pane-bracket"
+						aria-selected="false">
+					<i class="bi bi-trophy me-1" aria-hidden="true"></i>Bracket
+				</button>
+			</li>
+		}
+		<li class="nav-item" role="presentation">
+			<button class="nav-link"
+					id="tab-btn-pso"
+					data-bs-toggle="pill"
+					data-bs-target="#pane-pso"
+					type="button"
+					role="tab"
+					aria-controls="pane-pso"
+					aria-selected="false">
+				<i class="bi bi-bullseye me-1" aria-hidden="true"></i>PSO
+			</button>
+		</li>
+	</ul>
+</div>
+
+<div class="tab-content division-tab-content">
+	<!-- Standings Pane -->
+	<section class="tab-pane fade show active division-tab-pane" id="pane-standings" role="tabpanel" aria-labelledby="tab-btn-standings">
+		@if (Model.CombinedTenTeamTable is not null)
+		{
+			<div class="mb-3">
+				<partial name="_PoolStandingsTable" model="Model.CombinedTenTeamTable" />
+			</div>
+		}
+
+		<div class="row g-3">
+			@foreach (var poolTable in Model.PoolTables)
+			{
+				<div class="@poolColClass">
+					<partial name="_PoolStandingsTable" model="poolTable" />
+				</div>
+			}
+		</div>
+
+		@if (Model.TwelveTeamWinnersTable is not null || Model.TwelveTeamRunnersUpTable is not null)
+		{
+			<div class="row g-3 mt-1">
+				@if (Model.TwelveTeamWinnersTable is not null)
+				{
+					<div class="col-12 col-xl-6">
+						<partial name="_PoolStandingsTable" model="Model.TwelveTeamWinnersTable" />
+					</div>
+				}
+				@if (Model.TwelveTeamRunnersUpTable is not null)
+				{
+					<div class="col-12 col-xl-6">
+						<partial name="_PoolStandingsTable" model="Model.TwelveTeamRunnersUpTable" />
+					</div>
+				}
+			</div>
+		}
+
+		<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2 small text-muted">
+			<div>
+				<strong>10-Point System:</strong> Win = 6, Draw = 3, Loss = 0, +1/goal (max 3), +1 shutout (not on forfeits), YC = &minus;1, RC = &minus;2.
+				<button type="button" class="btn btn-sm btn-link p-0 ms-1 align-baseline" data-bs-toggle="modal" data-bs-target="#pointsRulesLegendModal">
+					Tiebreaker rules
+				</button>
+			</div>
+			@if (Model.CalculatedAtUtc.HasValue && Model.CalculatedAtUtc.Value != default)
+			{
+				<span>Updated @Model.CalculatedAtUtc.Value.ToString("MMM d, yyyy h:mm tt") UTC</span>
+			}
+		</div>
+	</section>
+
+	<!-- Scores/Schedule & Division PSO side-by-side on desktop -->
+	<div class="row g-3">
+		<div class="col-12 col-lg-7 division-tab-col">
+			<section class="tab-pane fade division-tab-pane" id="pane-schedule" role="tabpanel" aria-labelledby="tab-btn-schedule">
+				<partial name="_GameScheduleList" model="Model.Schedule" />
+			</section>
+		</div>
+		<div class="col-12 col-lg-5 division-tab-col">
+			<section class="tab-pane fade division-tab-pane" id="pane-pso" role="tabpanel" aria-labelledby="tab-btn-pso">
+				<partial name="_DivisionPsoStandings" model="Model.Pso" />
+			</section>
+		</div>
+	</div>
+
+	<!-- Bracket Pane (4 / 6 / 8 / 12 team divisions) -->
+	@if (hasBracketTab)
+	{
+		<section class="tab-pane fade division-tab-pane" id="pane-bracket" role="tabpanel" aria-labelledby="tab-btn-bracket">
+			@if (Model.Bracket.Topology == BracketTopologyKind.SemifinalsToFinal)
+			{
+				<partial name="_SemifinalBracket" model="Model.Bracket" />
+			}
+			else
+			{
+				<partial name="_DirectFinalsBracket" model="Model.Bracket" />
+			}
+		</section>
+	}
+</div>
+
+<!-- Mobile Team Stats Detail Modal -->
+<div class="modal fade" id="teamStatsDetailModal" tabindex="-1" aria-labelledby="statsModalTeamTitle" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title h6 fw-bold" id="statsModalTeamTitle">Team Details</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<table class="table table-sm mb-2">
+					<tbody>
+						<tr>
+							<td>Record</td>
+							<td class="text-end"><strong id="statsModalRecord"></strong></td>
+						</tr>
+						<tr>
+							<td>Goals For (GF)</td>
+							<td class="text-end" id="statsModalGf"></td>
+						</tr>
+						<tr>
+							<td>Goals Against (GA)</td>
+							<td class="text-end" id="statsModalGa"></td>
+						</tr>
+						<tr>
+							<td>Goal Differential (GD)</td>
+							<td class="text-end" id="statsModalGd"></td>
+						</tr>
+						<tr>
+							<td>Yellow Cards (&minus;1 pt each)</td>
+							<td class="text-end" id="statsModalYc"></td>
+						</tr>
+						<tr>
+							<td>Red Cards (&minus;2 pts each)</td>
+							<td class="text-end" id="statsModalRc"></td>
+						</tr>
+						<tr class="table-active">
+							<td><strong>Standings Points (PTS)</strong></td>
+							<td class="text-end"><strong id="statsModalPoints"></strong></td>
+						</tr>
+					</tbody>
+				</table>
+				<div id="statsModalForfeitNotice" class="alert alert-warning py-2 small mb-0 d-none">
+					<i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>
+					Includes a forfeit game (scored 1&ndash;0 = 7 pts, no shutout bonus).
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- 10-Point System & 6-Step Tiebreaker Rules Modal -->
+<div class="modal fade" id="pointsRulesLegendModal" tabindex="-1" aria-labelledby="pointsRulesLegendLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title h6 fw-bold" id="pointsRulesLegendLabel">AYSO 10-Point Scoring &amp; Tiebreakers</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body small">
+				<h3 class="h6 fw-bold">Pool-Play Game Points</h3>
+				<ul class="ps-3">
+					<li><strong>Win:</strong> 6 points &bull; <strong>Draw:</strong> 3 points &bull; <strong>Loss:</strong> 0 points</li>
+					<li><strong>Goals:</strong> +1 point per goal scored (up to 3 goals max per game)</li>
+					<li><strong>Shutout:</strong> +1 bonus point if opponent scored 0 goals (not awarded on forfeits; a 0&ndash;0 draw earns 4 pts per team)</li>
+					<li><strong>Forfeit:</strong> Recorded as 1&ndash;0 = 7 points (6 win + 1 goal, no shutout)</li>
+					<li><strong>Misconduct Deductions:</strong> &minus;1 point per Yellow Card, &minus;2 points per Red Card</li>
+				</ul>
+				<hr />
+				<h3 class="h6 fw-bold">6-Step Pool Tiebreaker Order</h3>
+				<ol class="ps-3 mb-0">
+					<li><strong>Head-to-Head</strong> (2-way ties only)</li>
+					<li><strong>Games Won</strong> <em>(skipped if any forfeit occurred in the pool/scope)</em></li>
+					<li><strong>Fewest Cards</strong> (fewest Red Cards first, then fewest Yellow Cards)</li>
+					<li><strong>Goals Against</strong> (non-forfeit games, capped at 3 per game, lowest wins)</li>
+					<li><strong>Goal Differential</strong> (non-forfeit games, GF &amp; GA each capped at 3 per game; <em>skipped if any forfeit occurred in scope</em>)</li>
+					<li><strong>KFTM</strong> (live Kicks From The Mark conducted by tournament staff)</li>
+				</ol>
+			</div>
+		</div>
+	</div>
+</div>
+
+@section Scripts {
+	<script src="~/js/division-standings.js" asp-append-version="true"></script>
+}

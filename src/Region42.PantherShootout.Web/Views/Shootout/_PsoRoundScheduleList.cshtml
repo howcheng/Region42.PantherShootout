@@ -1,0 +1,71 @@
+@model IReadOnlyList<Region42.PantherShootout.Web.Models.PsoMatchupItemViewModel>
+
+<div class="card">
+	<div class="card-header py-2">
+		<h3 class="h6 mb-0 fw-bold">
+			<i class="bi bi-list-check me-1" aria-hidden="true"></i>Shootout Round Matchups
+		</h3>
+	</div>
+	<div class="card-body">
+		@if (Model.Count == 0)
+		{
+			<p class="text-muted mb-0">No shootout rounds scheduled for this division.</p>
+		}
+		else
+		{
+			@foreach (var roundGroup in Model.GroupBy(m => m.Round).OrderBy(g => g.Key))
+			{
+				<div class="mb-3">
+					<h4 class="text-muted text-uppercase small fw-bold mb-2">PSO Round @roundGroup.Key</h4>
+
+					@foreach (var item in roundGroup)
+					{
+						var homeHigher = item.HasScore && item.HomePkGoals > item.AwayPkGoals;
+						var awayHigher = item.HasScore && item.AwayPkGoals > item.HomePkGoals;
+
+						<div class="pso-matchup-card">
+							<div class="d-flex justify-content-between align-items-center mb-1">
+								<span class="badge bg-info-subtle text-info-emphasis">@item.SourceLabel</span>
+								<small class="text-muted">
+									@if (item.ScheduledDateTime.HasValue)
+									{
+										@item.ScheduledDateTime.Value.ToString("ddd, MMM d, h:mm tt")
+										@if (!string.IsNullOrWhiteSpace(item.Location))
+										{
+											<span> &bull; @item.Location</span>
+										}
+									}
+									else if (!string.IsNullOrWhiteSpace(item.Location))
+									{
+										<span>@item.Location</span>
+									}
+								</small>
+							</div>
+
+							<div class="row align-items-center g-1">
+								<div class="col-5 text-end @(homeHigher ? "fw-bold text-success" : "") @(!item.IsSeeded ? "text-muted fst-italic" : "")">
+									<span class="d-none d-sm-inline">@item.HomeFullDisplay</span>
+									<span class="d-sm-none">@item.HomeShortDisplay</span>
+								</div>
+								<div class="col-2 text-center px-0">
+									@if (item.HasScore)
+									{
+										<span class="badge bg-primary">@item.HomePkGoals - @item.AwayPkGoals</span>
+									}
+									else
+									{
+										<span class="badge bg-secondary">PK</span>
+									}
+								</div>
+								<div class="col-5 @(awayHigher ? "fw-bold text-success" : "") @(!item.IsSeeded ? "text-muted fst-italic" : "")">
+									<span class="d-none d-sm-inline">@item.AwayFullDisplay</span>
+									<span class="d-sm-none">@item.AwayShortDisplay</span>
+								</div>
+							</div>
+						</div>
+					}
+				</div>
+			}
+		}
+	</div>
+</div>

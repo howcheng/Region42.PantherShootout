@@ -1,0 +1,142 @@
+@model Region42.PantherShootout.Web.Models.PoolStandingsTableViewModel
+
+<div class="card h-100">
+	<div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
+		<div>
+			<h3 class="h6 mb-0 fw-bold">@Model.Title</h3>
+			@if (!string.IsNullOrWhiteSpace(Model.Subtitle))
+			{
+				<div class="small text-muted">@Model.Subtitle</div>
+			}
+		</div>
+		@if (Model.Result.IsFinal)
+		{
+			<span class="badge bg-success">Final</span>
+		}
+		else
+		{
+			<span class="badge bg-secondary-subtle text-secondary-emphasis">In Progress</span>
+		}
+	</div>
+	<div class="card-body p-0">
+		@if (Model.Result.RequiresKftmTiebreaker)
+		{
+			<div class="alert alert-warning rounded-0 border-0 border-bottom mb-0 py-2 small" role="alert">
+				<i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
+				<strong>KFTM Tiebreaker Needed:</strong> Tied teams remain deadlocked after all 5 formula tiebreakers. Official placement awaits live Kicks From The Mark.
+			</div>
+		}
+
+		<div class="table-responsive">
+			<table class="table table-striped table-hover align-middle mb-0 standings-table">
+				<thead>
+					<tr>
+						<th class="text-center">#</th>
+						<th>Team</th>
+						<th class="text-center" title="Games Played">GP</th>
+						<th class="text-center" title="Wins">W</th>
+						<th class="text-center" title="Draws">D</th>
+						<th class="text-center" title="Losses">L</th>
+						<th class="text-center d-none d-md-table-cell" title="Goals For">GF</th>
+						<th class="text-center d-none d-md-table-cell" title="Goals Against">GA</th>
+						<th class="text-center d-none d-md-table-cell" title="Goal Differential">GD</th>
+						<th class="text-center d-none d-lg-table-cell" title="Yellow Cards">YC</th>
+						<th class="text-center d-none d-lg-table-cell" title="Red Cards">RC</th>
+						<th class="text-center" title="AYSO 10-Point Standings Points">
+							<strong>PTS</strong>
+							<button type="button"
+									class="btn btn-sm btn-link p-0 ms-1 d-md-none"
+									data-bs-toggle="modal"
+									data-bs-target="#pointsRulesLegendModal"
+									aria-label="10-Point Scoring &amp; Tiebreaker Rules">
+								<i class="bi bi-question-circle" aria-hidden="true"></i>
+							</button>
+						</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var row in Model.Result.Standings)
+					{
+						var isChamp = Model.ChampionTeamId.HasValue && Model.ChampionTeamId.Value == row.TeamId;
+						var advances = !isChamp && Model.AdvancingTeamIds.Contains(row.TeamId);
+						var rowClass = isChamp ? "champion-row" : (advances ? "advances-row" : "");
+						var compactLabel = !string.IsNullOrWhiteSpace(row.CoachName) ? row.CoachName : row.TeamName;
+						var fullLabel = string.IsNullOrWhiteSpace(row.TeamDesignation)
+							? row.TeamName
+							: $"{row.TeamDesignation} {row.TeamName}";
+
+						<tr class="@rowClass">
+							<td class="text-center fw-semibold">@row.Rank</td>
+							<td>
+								<span class="badge bg-dark me-1">@row.TeamDesignation</span>
+								<strong class="d-none d-sm-inline">@row.TeamName</strong>
+								<strong class="d-sm-none">@compactLabel</strong>
+								@if (isChamp)
+								{
+									<span class="badge bg-warning text-dark ms-1" title="Division Champion">
+										<i class="bi bi-trophy-fill" aria-hidden="true"></i>
+									</span>
+								}
+								else if (advances)
+								{
+									<span class="badge bg-success ms-1" title="Advances to Championship Bracket">
+										<i class="bi bi-star-fill" aria-hidden="true"></i>
+									</span>
+								}
+								@if (row.HasForfeit)
+								{
+									<span class="badge bg-warning-subtle text-warning-emphasis ms-1" title="Involved in a forfeit game">FORF</span>
+								}
+							</td>
+							<td class="text-center">@row.GamesPlayed</td>
+							<td class="text-center">@row.Wins</td>
+							<td class="text-center">@row.Draws</td>
+							<td class="text-center">@row.Losses</td>
+							<td class="text-center d-none d-md-table-cell">@row.GoalsFor</td>
+							<td class="text-center d-none d-md-table-cell">@row.GoalsAgainst</td>
+							<td class="text-center d-none d-md-table-cell">@(row.GoalDifferential > 0 ? $"+{row.GoalDifferential}" : row.GoalDifferential.ToString())</td>
+							<td class="text-center d-none d-lg-table-cell">@row.YellowCards</td>
+							<td class="text-center d-none d-lg-table-cell">@row.RedCards</td>
+							<td class="text-center text-nowrap">
+								<strong>@row.Points</strong>
+								<button type="button"
+										class="btn btn-sm btn-link p-0 ms-1 d-md-none team-stats-modal-btn"
+										data-team-name="@fullLabel"
+										data-record="@($"{row.Wins}W - {row.Draws}D - {row.Losses}L ({row.GamesPlayed} GP)")"
+										data-points="@row.Points"
+										data-gf="@row.GoalsFor"
+										data-ga="@row.GoalsAgainst"
+										data-gd="@(row.GoalDifferential > 0 ? $"+{row.GoalDifferential}" : row.GoalDifferential.ToString())"
+										data-yc="@row.YellowCards"
+										data-rc="@row.RedCards"
+										data-forfeit="@(row.HasForfeit ? "true" : "false")"
+										aria-label="View full stats for @fullLabel">
+									<i class="bi bi-info-circle" aria-hidden="true"></i>
+								</button>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+	@if (Model.AdvancingTeamIds.Count > 0 || Model.Result.AnyForfeitInScope)
+	{
+		<div class="card-footer py-1 small text-muted d-flex flex-wrap justify-content-between gap-2">
+			@if (Model.AdvancingTeamIds.Count > 0 && Model.Result.Standings.Any(s => Model.AdvancingTeamIds.Contains(s.TeamId)))
+			{
+				<span>
+					<span class="badge bg-success me-1"><i class="bi bi-star-fill" aria-hidden="true"></i></span>
+					Qualifies for Championship Bracket
+				</span>
+			}
+			@if (Model.Result.AnyForfeitInScope)
+			{
+				<span>
+					<i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+					Forfeit recorded in scope: Wins and Goal Differential tiebreakers are neutralized per tournament rules.
+				</span>
+			}
+		</div>
+	}
+</div>

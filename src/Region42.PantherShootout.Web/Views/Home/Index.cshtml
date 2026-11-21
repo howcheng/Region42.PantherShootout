@@ -1,10 +1,178 @@
+@model Region42.PantherShootout.Web.Models.HomeLandingViewModel
 @{
-	ViewData["Title"] = "Standings & Schedules";
+	ViewData["Title"] = Model.SelectedYear?.Name ?? "Tournament Hub";
+	var currentYear = Model.SelectedYear?.Year;
 }
 
-<div class="py-4 text-center">
-	<h1 class="display-5 fw-semibold">AYSO Region 42 Panther Shootout</h1>
-	<p class="lead text-muted">
-		Schedules, pool-play standings, championship brackets, and Penalty Shootout (PSO) standings.
-	</p>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+	<div>
+		<h1 class="h3 mb-1">@(Model.SelectedYear?.Name ?? "AYSO Region 42 Panther Shootout")</h1>
+		<p class="text-muted small mb-0">Live schedules, AYSO 10-point pool standings, championship brackets &amp; Penalty Shootout (PSO) results</p>
+	</div>
+
+	@if (Model.AvailableYears.Count > 1)
+	{
+		<div>
+			<label for="landingYearSelect" class="visually-hidden">Tournament Year</label>
+			<select id="landingYearSelect" class="form-select form-select-sm">
+				@foreach (var y in Model.AvailableYears)
+				{
+					<option value="@y.Year" selected="@(Model.SelectedYear?.Id == y.Id)">@y.Name</option>
+				}
+			</select>
+		</div>
+	}
 </div>
+
+@if (!string.IsNullOrWhiteSpace(Model.SelectedYear?.CustomMessage))
+{
+	<div class="alert alert-warning border-warning d-flex align-items-start gap-2 mb-3" role="alert">
+		<i class="bi bi-megaphone-fill fs-5 flex-shrink-0" aria-hidden="true"></i>
+		<div>
+			<strong>Tournament Announcement:</strong> @Model.SelectedYear.CustomMessage
+		</div>
+	</div>
+}
+
+@if (!Model.HasTournamentData)
+{
+	<div class="card border-secondary-subtle">
+		<div class="card-body text-center py-5">
+			<i class="bi bi-trophy fs-1 text-secondary d-block mb-2" aria-hidden="true"></i>
+			<h2 class="h5 fw-bold">Tournament Schedule Coming Soon</h2>
+			<p class="text-muted mb-3">
+				@(Model.SelectedYear is not null
+					? $"Schedules and divisions for {Model.SelectedYear.Name} have not been published yet."
+					: "No tournament schedules have been published yet.")
+			</p>
+			@if (User.Identity?.IsAuthenticated == true)
+			{
+				<div class="d-flex flex-wrap justify-content-center gap-2">
+					<a asp-controller="Import" asp-action="Upload" class="btn btn-primary">
+						<i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>Import Schedule Workbook
+					</a>
+					<a asp-controller="Admin" asp-action="Years" class="btn btn-outline-secondary">
+						<i class="bi bi-calendar-event me-1" aria-hidden="true"></i>Manage Tournament Years
+					</a>
+				</div>
+			}
+		</div>
+	</div>
+}
+else
+{
+	@if (Model.PreferredDivision is not null && currentYear.HasValue)
+	{
+		var pref = Model.PreferredDivision;
+		<div class="card border-primary mb-4 shadow-sm">
+			<div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3 py-3">
+				<div>
+					<div class="text-primary small fw-bold text-uppercase mb-1">
+						<i class="bi bi-bookmark-star-fill me-1" aria-hidden="true"></i>Your Division
+					</div>
+					<div class="d-flex flex-wrap align-items-center gap-2">
+						<span class="h5 mb-0 fw-bold">@pref.Name</span>
+						<span class="badge @pref.PhaseBadgeClass">@pref.PhaseLabel</span>
+					</div>
+					@if (pref.ChampionTeamDisplay is not null)
+					{
+						<div class="small text-success fw-semibold mt-1">
+							<i class="bi bi-trophy-fill text-warning me-1" aria-hidden="true"></i>Champion: @pref.ChampionTeamDisplay
+						</div>
+					}
+					else
+					{
+						<div class="small text-muted mt-1">
+							@pref.TeamCount Teams &bull; @pref.PoolCount @(pref.PoolCount == 1 ? "Pool" : "Pools") &bull; @pref.CompletedPoolGames/@pref.TotalPoolGames Pool Games Final
+						</div>
+					}
+				</div>
+				<div class="d-flex flex-wrap gap-2 w-100 w-sm-auto">
+					<a href="/standings/@currentYear/@pref.DivisionKey" class="btn btn-primary flex-grow-1">
+						View @pref.ShortCode Standings &amp; Schedule
+						<i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+					</a>
+					<a href="/shootout/@currentYear?division=@pref.DivisionKey" class="btn btn-outline-primary">
+						<i class="bi bi-bullseye me-1" aria-hidden="true"></i>@pref.ShortCode PSO
+					</a>
+				</div>
+			</div>
+		</div>
+	}
+
+	<h2 class="h5 fw-bold mb-3">Select a Division</h2>
+	<div class="row g-3 mb-4">
+		@foreach (var div in Model.Divisions)
+		{
+			<div class="col-12 col-sm-6 col-lg-4">
+				<a href="/standings/@currentYear/@div.DivisionKey"
+				   class="card h-100 text-decoration-none division-hub-card @(div.IsPreferred ? "border-primary" : "")">
+					<div class="card-body d-flex flex-column justify-content-between">
+						<div>
+							<div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+								<div>
+									<span class="badge bg-dark me-1">@div.ShortCode</span>
+									<strong class="fs-5 text-body">@div.Name</strong>
+								</div>
+								<span class="badge @div.PhaseBadgeClass">@div.PhaseLabel</span>
+							</div>
+							<div class="small text-muted mb-2">
+								@div.TeamCount Teams &bull; @div.PoolCount @(div.PoolCount == 1 ? "Pool" : "Pools")
+								&bull; @(div.HasBracket ? "Pool + Bracket" : "Pool Standings Champion")
+							</div>
+						</div>
+
+						<div class="pt-2 border-top d-flex justify-content-between align-items-center small">
+							@if (div.ChampionTeamDisplay is not null)
+							{
+								<span class="text-success fw-semibold text-truncate">
+									<i class="bi bi-trophy-fill text-warning me-1" aria-hidden="true"></i>@div.ChampionTeamDisplay
+								</span>
+							}
+							else
+							{
+								<span class="text-muted">@div.CompletedPoolGames / @div.TotalPoolGames pool games</span>
+							}
+							<span class="text-primary fw-semibold flex-shrink-0 ms-2">
+								Open <i class="bi bi-chevron-right" aria-hidden="true"></i>
+							</span>
+						</div>
+					</div>
+				</a>
+			</div>
+		}
+	</div>
+
+	<div class="card border-info-subtle">
+		<div class="card-body">
+			<div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+				<div>
+					<h2 class="h5 fw-bold mb-1">
+						<i class="bi bi-bullseye text-primary me-1" aria-hidden="true"></i>Penalty Shootout (PSO) Competition
+					</h2>
+					<p class="small text-muted mb-2">
+						Parallel division-wide penalty-kick competition scored independently alongside pool play.
+					</p>
+					@if (Model.Divisions.Any(d => d.PsoLeaderDisplay != null))
+					{
+						<div class="d-flex flex-wrap gap-2">
+							@foreach (var psoDiv in Model.Divisions.Where(d => d.PsoLeaderDisplay != null))
+							{
+								<span class="badge @(psoDiv.IsPsoFinal ? "bg-success-subtle text-success-emphasis" : "bg-secondary-subtle text-secondary-emphasis")">
+									@psoDiv.ShortCode @(psoDiv.IsPsoFinal ? "Winner:" : "Leader:") @psoDiv.PsoLeaderDisplay
+								</span>
+							}
+						</div>
+					}
+				</div>
+				<a href="/shootout/@currentYear" class="btn btn-outline-primary">
+					View PSO Standings &amp; Rounds <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+				</a>
+			</div>
+		</div>
+	</div>
+}
+
+@section Scripts {
+	<script src="~/js/home-landing.js" asp-append-version="true"></script>
+}

@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Region42.PantherShootout.Domain.Interfaces;
 using Region42.PantherShootout.Infrastructure.Import;
 using Region42.PantherShootout.Infrastructure.Repositories;
@@ -24,19 +25,28 @@ public static class ServiceCollectionExtensions
 		ArgumentNullException.ThrowIfNull(configuration);
 
 		services.Configure<StorageOptions>(configuration.GetSection(StorageOptions.SectionName));
-		var storageOptions = configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>() ?? new StorageOptions();
+		services.TryAddSingleton(_ => StorageClient.Create());
 
-		if (string.Equals(storageOptions.Provider, "Gcs", StringComparison.OrdinalIgnoreCase))
+		services.AddSingleton<LocalFileTournamentDataStore>();
+		services.AddSingleton<GcsTournamentDataStore>();
+		services.AddSingleton<LocalFileStorageWriteLock>();
+		services.AddSingleton<GcsStorageWriteLock>();
+
+		services.AddSingleton<ITournamentDataStore>(sp =>
 		{
-			services.TryAddSingleton(_ => StorageClient.Create());
-			services.AddSingleton<ITournamentDataStore, GcsTournamentDataStore>();
-			services.AddSingleton<IStorageWriteLock, GcsStorageWriteLock>();
-		}
-		else
+			var opts = sp.GetRequiredService<IOptions<StorageOptions>>().Value;
+			return string.Equals(opts.Provider, "Gcs", StringComparison.OrdinalIgnoreCase)
+				? sp.GetRequiredService<GcsTournamentDataStore>()
+				: sp.GetRequiredService<LocalFileTournamentDataStore>();
+		});
+
+		services.AddSingleton<IStorageWriteLock>(sp =>
 		{
-			services.AddSingleton<ITournamentDataStore, LocalFileTournamentDataStore>();
-			services.AddSingleton<IStorageWriteLock, LocalFileStorageWriteLock>();
-		}
+			var opts = sp.GetRequiredService<IOptions<StorageOptions>>().Value;
+			return string.Equals(opts.Provider, "Gcs", StringComparison.OrdinalIgnoreCase)
+				? sp.GetRequiredService<GcsStorageWriteLock>()
+				: sp.GetRequiredService<LocalFileStorageWriteLock>();
+		});
 
 		services.AddSingleton<IScheduleWorkbookReader, OpenXmlScheduleWorkbookReader>();
 		services.AddScoped<ITournamentDataContext, TournamentDataContext>();

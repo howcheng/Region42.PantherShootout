@@ -1,0 +1,80 @@
+@model Region42.PantherShootout.Web.Models.DivisionBulletinsIndexViewModel
+@{
+	ViewData["Title"] = "Division Bulletins";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+	<div>
+		<h1 class="h3 mb-1">Division Bulletins</h1>
+		<p class="text-muted small mb-0">Post field changes, weather delays, or check-in notes on individual division pages.</p>
+	</div>
+
+	@if (Model.Years.Count > 1)
+	{
+		<div>
+			<label for="bulletinYearSelect" class="visually-hidden">Tournament Year</label>
+			<select id="bulletinYearSelect" class="form-select form-select-sm">
+				@foreach (var y in Model.Years)
+				{
+					<option value="@y.Id" selected="@(y.Id == Model.SelectedTournamentYearId)">@y.Name</option>
+				}
+			</select>
+		</div>
+	}
+</div>
+
+@if (Model.Divisions.Count == 0)
+{
+	<div class="alert alert-info">
+		<i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+		No imported divisions found for @(string.IsNullOrWhiteSpace(Model.SelectedYearName) ? "any year" : Model.SelectedYearName).
+		<a asp-controller="Import" asp-action="Upload">Import a schedule workbook</a> first.
+	</div>
+}
+else
+{
+	<div class="row g-3">
+		@foreach (var div in Model.Divisions)
+		{
+			<div class="col-12 col-md-6">
+				<div class="card h-100">
+					<div class="card-body d-flex flex-column justify-content-between">
+						<div>
+							<div class="d-flex justify-content-between align-items-center mb-2">
+								<div>
+									<span class="badge bg-dark me-1">@div.ShortCode</span>
+									<strong>@div.Name</strong>
+								</div>
+								<span class="badge bg-secondary-subtle text-secondary-emphasis">
+									@div.TeamCount Teams &bull; @div.PoolCount @(div.PoolCount == 1 ? "Pool" : "Pools")
+								</span>
+							</div>
+							@if (!string.IsNullOrWhiteSpace(div.CustomMessage))
+							{
+								<div class="alert alert-info py-2 small mb-2">
+									<i class="bi bi-megaphone-fill me-1" aria-hidden="true"></i>@div.CustomMessage
+								</div>
+							}
+							else
+							{
+								<p class="text-muted small fst-italic mb-2">No active bulletin message.</p>
+							}
+						</div>
+						<div class="d-flex gap-2 mt-2">
+							<a asp-action="EditDivision" asp-route-id="@div.Id" class="btn btn-sm btn-outline-primary">
+								<i class="bi bi-pencil me-1" aria-hidden="true"></i>Edit Bulletin
+							</a>
+							<a href="/standings/@div.Year/@div.DivisionKey" class="btn btn-sm btn-outline-secondary">
+								View Page
+							</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+@section Scripts {
+	<script src="~/js/admin-divisions.js" asp-append-version="true"></script>
+}

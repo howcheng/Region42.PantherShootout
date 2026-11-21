@@ -1,0 +1,53 @@
+@model Region42.PantherShootout.Web.Models.EditDivisionBulletinViewModel
+@{
+	ViewData["Title"] = $"Edit {Model.DivisionName} Bulletin";
+}
+
+<div class="row justify-content-center">
+	<div class="col-12 col-md-8 col-lg-6">
+		<div class="d-flex justify-content-between align-items-center mb-3">
+			<h1 class="h3 mb-0">@Model.DivisionName (@Model.Year) Bulletin</h1>
+			<a asp-action="Divisions" asp-route-yearId="@Model.TournamentYearId" class="btn btn-outline-secondary btn-sm">
+				<i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back
+			</a>
+		</div>
+
+		@if (!ViewData.ModelState.IsValid)
+		{
+			<div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+		}
+
+		<div class="card">
+			<div class="card-body">
+				<form method="post" asp-action="EditDivision">
+					<input type="hidden" asp-for="DivisionId" />
+					<input type="hidden" asp-for="TournamentYearId" />
+					<input type="hidden" asp-for="Year" />
+					<input type="hidden" asp-for="DivisionName" />
+					<input type="hidden" asp-for="ShortCode" />
+
+					<div class="mb-3">
+						<label asp-for="CustomMessage" class="form-label fw-semibold">Bulletin Message</label>
+						<textarea asp-for="CustomMessage"
+								  class="form-control"
+								  rows="4"
+								  placeholder="Leave blank to clear bulletin"></textarea>
+						<span asp-validation-for="CustomMessage" class="text-danger small"></span>
+						<div class="form-text">Shown at the top of the @Model.DivisionName standings page.</div>
+					</div>
+
+					<div class="d-flex gap-2">
+						<button type="submit" class="btn btn-primary">
+							<i class="bi bi-save me-1" aria-hidden="true"></i>Save Bulletin
+						</button>
+						<a asp-action="Divisions" asp-route-yearId="@Model.TournamentYearId" class="btn btn-outline-secondary">Cancel</a>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+</div>
+
+@section Scripts {
+	<partial name="_ValidationScriptsPartial" />
+}

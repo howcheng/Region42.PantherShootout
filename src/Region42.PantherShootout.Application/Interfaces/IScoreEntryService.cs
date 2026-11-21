@@ -28,4 +28,8 @@ public interface IScoreEntryService
 	Task<DivisionStandingsSnapshotDocument> RemoveKftmOverrideAsync(
 		int overrideId,
 		CancellationToken cancellationToken = default);
+
+	Task<DivisionStandingsSnapshotDocument> SaveDivisionScoresBatchAsync(
+		DivisionScoreBatchUpdateDto batch,
+		CancellationToken cancellationToken = default);
 }

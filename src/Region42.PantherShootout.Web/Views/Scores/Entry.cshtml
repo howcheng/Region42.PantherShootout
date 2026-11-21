@@ -1,0 +1,685 @@
+@model Region42.PantherShootout.Web.Models.ScoresEntryPageViewModel
+@using Region42.PantherShootout.Domain.Enums
+@{
+	ViewData["Title"] = Model.SelectedDivision is not null
+		? $"Enter Scores — {Model.SelectedDivision.Name}"
+		: "Enter Scores";
+	var isPoolActive = Model.ActiveTab == "pool";
+	var isBracketActive = Model.ActiveTab == "bracket" && Model.HasChampionshipBracket;
+	var isKftmActive = Model.ActiveTab == "kftm";
+	var psoIndex = 0;
+}
+
+@section Styles {
+	<link rel="stylesheet" href="~/css/scores-entry.css" asp-append-version="true" />
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+	<div>
+		<h1 class="h3 mb-1">Enter Tournament Scores</h1>
+		<p class="text-muted small mb-0">Record paired Pool-Play + PSO shootout scores, Championship bracket results, and KFTM tiebreakers.</p>
+	</div>
+	@if (Model.SelectedYear is not null && Model.SelectedDivision is not null)
+	{
+		<a href="/standings/@Model.SelectedYear.Year/@Model.SelectedDivision.DivisionKey"
+		   class="btn btn-sm btn-outline-secondary">
+			<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Public @Model.SelectedDivision.ShortCode Standings
+		</a>
+	}
+</div>
+
+@if (!Model.HasTournamentData || Model.SelectedYear is null || Model.SelectedDivision is null)
+{
+	<div class="alert alert-info">
+		<i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+		No imported tournament divisions found yet. <a asp-controller="Import" asp-action="Upload">Import a schedule workbook</a> first.
+	</div>
+}
+else
+{
+	<div class="card mb-3">
+		<div class="card-body py-2">
+			<div class="row g-2 align-items-end">
+				@if (Model.AvailableYears.Count > 1)
+				{
+					<div class="col-6 col-md-3">
+						<label for="scoresYearSelect" class="form-label small fw-semibold mb-1">Year</label>
+						<select id="scoresYearSelect" class="form-select form-select-sm">
+							@foreach (var y in Model.AvailableYears)
+							{
+								<option value="@y.Year" selected="@(y.Id == Model.SelectedYear.Id)">@y.Name</option>
+							}
+						</select>
+					</div>
+				}
+				else
+				{
+					<input type="hidden" id="scoresYearSelect" value="@Model.SelectedYear.Year" />
+				}
+
+				<div class="col-6 col-md-5">
+					<label for="scoresDivisionSelect" class="form-label small fw-semibold mb-1">Division</label>
+					<select id="scoresDivisionSelect" class="form-select form-select-sm">
+						@foreach (var d in Model.Divisions)
+						{
+							<option value="@d.DivisionKey" selected="@(d.Id == Model.SelectedDivision.Id)">
+								@d.Name (@((int)d.Size) teams)
+							</option>
+						}
+					</select>
+				</div>
+
+				<div class="col-12 col-md-4">
+					<label for="scoresRoundSelect" class="form-label small fw-semibold mb-1">Pool Round Filter</label>
+					<select id="scoresRoundSelect" class="form-select form-select-sm">
+						<option value="" selected="@(!Model.SelectedRound.HasValue)">All Rounds (@Model.AvailableRounds.Count)</option>
+						@foreach (var r in Model.AvailableRounds)
+						{
+							<option value="@r" selected="@(Model.SelectedRound == r)">Round @r</option>
+						}
+					</select>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<ul class="nav nav-pills pill-scroll-strip mb-3" id="scoresSectionTabs" role="tablist">
+		<li class="nav-item" role="presentation">
+			<button class="nav-link @(isPoolActive ? "active" : "")"
+					id="scores-tab-pool"
+					data-bs-toggle="pill"
+					data-bs-target="#scores-pane-pool"
+					data-tab-name="pool"
+					type="button"
+					role="tab"
+					aria-controls="scores-pane-pool"
+					aria-selected="@(isPoolActive ? "true" : "false")">
+				<i class="bi bi-ui-checks-grid me-1" aria-hidden="true"></i>Pool Play + PSO (@Model.PoolPlayCards.Count)
+			</button>
+		</li>
+		@if (Model.HasChampionshipBracket)
+		{
+			<li class="nav-item" role="presentation">
+				<button class="nav-link @(isBracketActive ? "active" : "")"
+						id="scores-tab-bracket"
+						data-bs-toggle="pill"
+						data-bs-target="#scores-pane-bracket"
+						data-tab-name="bracket"
+						type="button"
+						role="tab"
+						aria-controls="scores-pane-bracket"
+						aria-selected="@(isBracketActive ? "true" : "false")">
+					<i class="bi bi-trophy me-1" aria-hidden="true"></i>Championship Bracket (@Model.ChampionshipCards.Count)
+				</button>
+			</li>
+		}
+		<li class="nav-item" role="presentation">
+			<button class="nav-link @(isKftmActive ? "active" : "")"
+					id="scores-tab-kftm"
+					data-bs-toggle="pill"
+					data-bs-target="#scores-pane-kftm"
+					data-tab-name="kftm"
+					type="button"
+					role="tab"
+					aria-controls="scores-pane-kftm"
+					aria-selected="@(isKftmActive ? "true" : "false")">
+				<i class="bi bi-lightning-charge me-1" aria-hidden="true"></i>Tiebreakers (KFTM)
+				@if (Model.ActiveKftmTieCount > 0)
+				{
+					<span class="badge bg-warning text-dark ms-1">@Model.ActiveKftmTieCount</span>
+				}
+			</button>
+		</li>
+	</ul>
+
+	<div class="tab-content">
+		<!-- Batch Form covers Pool Play + PSO & Championship Bracket + R4 PSO -->
+		<div class="tab-pane fade @(isPoolActive ? "show active" : "")" id="scores-pane-pool" role="tabpanel" aria-labelledby="scores-tab-pool">
+			<form method="post" asp-action="SaveBatch" id="divisionBatchScoresForm">
+				<input type="hidden" name="Year" value="@Model.SelectedYear.Year" />
+				<input type="hidden" name="DivisionKey" value="@Model.SelectedDivision.DivisionKey" />
+				<input type="hidden" name="DivisionId" value="@Model.SelectedDivision.Id" />
+				<input type="hidden" name="SelectedRound" value="@Model.SelectedRound" />
+				<input type="hidden" name="ActiveTab" id="activeTabInput" value="@Model.ActiveTab" />
+
+				@for (var i = 0; i < Model.PoolPlayCards.Count; i++)
+				{
+					var card = Model.PoolPlayCards[i];
+					var matchLabel = $"Round {card.Round} ({card.HomeCode} vs {card.AwayCode})";
+
+					<div class="score-entry-card pool-score-card" data-match-label="@matchLabel">
+						<input type="hidden" name="PoolPlayScores[@i].GameId" value="@card.GameId" />
+
+						<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+							<div>
+								<span class="badge bg-primary">Round @card.Round</span>
+								<span class="badge bg-secondary-subtle text-secondary-emphasis">Pool @card.PoolName</span>
+							</div>
+							<small class="text-muted">
+								@(card.ScheduledDateTime?.ToString("ddd, MMM d h:mm tt") ?? "Unscheduled")
+								@if (!string.IsNullOrWhiteSpace(card.Location))
+								{
+									<span> &bull; @card.Location</span>
+								}
+							</small>
+						</div>
+
+						<div class="row g-2 align-items-center">
+							<div class="col-12 col-md-4">
+								<div class="fw-bold">@card.HomeFullName</div>
+								<div class="d-flex align-items-center gap-2 mt-1">
+									<div class="d-flex align-items-center gap-1">
+										<label class="small text-warning-emphasis fw-semibold" for="homeYc_@i">YC</label>
+										<input type="number"
+											   id="homeYc_@i"
+											   name="PoolPlayScores[@i].HomeYellowCards"
+											   value="@card.HomeYellowCards"
+											   min="0"
+											   max="20"
+											   inputmode="numeric"
+											   class="form-control form-control-sm card-num-input card-count-input" />
+									</div>
+									<div class="d-flex align-items-center gap-1">
+										<label class="small text-danger fw-semibold" for="homeRc_@i">RC</label>
+										<input type="number"
+											   id="homeRc_@i"
+											   name="PoolPlayScores[@i].HomeRedCards"
+											   value="@card.HomeRedCards"
+											   min="0"
+											   max="20"
+											   inputmode="numeric"
+											   class="form-control form-control-sm card-num-input card-count-input" />
+									</div>
+								</div>
+							</div>
+
+							<div class="col-12 col-md-4">
+								<div class="d-flex justify-content-center align-items-center gap-2">
+									<div>
+										<label class="form-label small text-muted mb-0 d-block text-center" for="homeGoals_@i">@card.HomeCode Goals</label>
+										<input type="number"
+											   id="homeGoals_@i"
+											   name="PoolPlayScores[@i].HomeGoals"
+											   value="@card.HomeGoals"
+											   min="0"
+											   max="99"
+											   inputmode="numeric"
+											   class="form-control score-num-input home-goals-input" />
+									</div>
+									<span class="fw-bold mt-3">&ndash;</span>
+									<div>
+										<label class="form-label small text-muted mb-0 d-block text-center" for="awayGoals_@i">@card.AwayCode Goals</label>
+										<input type="number"
+											   id="awayGoals_@i"
+											   name="PoolPlayScores[@i].AwayGoals"
+											   value="@card.AwayGoals"
+											   min="0"
+											   max="99"
+											   inputmode="numeric"
+											   class="form-control score-num-input away-goals-input" />
+									</div>
+								</div>
+								<div class="form-check d-flex justify-content-center align-items-center gap-1 mt-1">
+									<input class="form-check-input forfeit-checkbox"
+										   type="checkbox"
+										   id="poolForfeit_@i"
+										   name="PoolPlayScores[@i].IsForfeit"
+										   value="true"
+										   checked="@card.IsForfeit" />
+									<label class="form-check-label small" for="poolForfeit_@i">Forfeit (1&ndash;0)</label>
+								</div>
+							</div>
+
+							<div class="col-12 col-md-4 text-md-end">
+								<div class="fw-bold">@card.AwayFullName</div>
+								<div class="d-flex justify-content-md-end align-items-center gap-2 mt-1">
+									<div class="d-flex align-items-center gap-1">
+										<label class="small text-warning-emphasis fw-semibold" for="awayYc_@i">YC</label>
+										<input type="number"
+											   id="awayYc_@i"
+											   name="PoolPlayScores[@i].AwayYellowCards"
+											   value="@card.AwayYellowCards"
+											   min="0"
+											   max="20"
+											   inputmode="numeric"
+											   class="form-control form-control-sm card-num-input card-count-input" />
+									</div>
+									<div class="d-flex align-items-center gap-1">
+										<label class="small text-danger fw-semibold" for="awayRc_@i">RC</label>
+										<input type="number"
+											   id="awayRc_@i"
+											   name="PoolPlayScores[@i].AwayRedCards"
+											   value="@card.AwayRedCards"
+											   min="0"
+											   max="20"
+											   inputmode="numeric"
+											   class="form-control form-control-sm card-num-input card-count-input" />
+									</div>
+								</div>
+							</div>
+						</div>
+
+						@if (card.PairedShootoutRoundId.HasValue)
+						{
+							var currentPsoIdx = psoIndex++;
+							<div class="pso-inline-band pso-pair-group"
+								 data-pso-label="PSO Round @card.PairedShootoutRoundNumber (@card.HomeCode vs @card.AwayCode)">
+								<input type="hidden" name="PsoScores[@currentPsoIdx].ShootoutRoundId" value="@card.PairedShootoutRoundId.Value" />
+								<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+									<span class="badge bg-info-subtle text-info-emphasis">
+										<i class="bi bi-bullseye me-1" aria-hidden="true"></i>Paired PSO Round @card.PairedShootoutRoundNumber PK Goals
+									</span>
+									<div class="d-flex align-items-center gap-2">
+										<label class="small fw-semibold" for="psoHome_@currentPsoIdx">@card.HomeCode PK</label>
+										<input type="number"
+											   id="psoHome_@currentPsoIdx"
+											   name="PsoScores[@currentPsoIdx].HomePkGoals"
+											   value="@card.HomePkGoals"
+											   min="0"
+											   max="99"
+											   inputmode="numeric"
+											   class="form-control form-control-sm score-num-input home-pk-input" />
+										<span class="fw-bold">&ndash;</span>
+										<input type="number"
+											   id="psoAway_@currentPsoIdx"
+											   name="PsoScores[@currentPsoIdx].AwayPkGoals"
+											   value="@card.AwayPkGoals"
+											   min="0"
+											   max="99"
+											   inputmode="numeric"
+											   class="form-control form-control-sm score-num-input away-pk-input" />
+										<label class="small fw-semibold" for="psoAway_@currentPsoIdx">@card.AwayCode PK</label>
+									</div>
+								</div>
+							</div>
+						}
+					</div>
+				}
+
+				@if (Model.HasChampionshipBracket)
+				{
+					<div class="mt-4">
+						<h2 class="h6 fw-bold text-uppercase text-muted mb-2">Championship Bracket Scores</h2>
+						@for (var c = 0; c < Model.ChampionshipCards.Count; c++)
+						{
+							var champ = Model.ChampionshipCards[c];
+							<div class="score-entry-card bracket-card champ-score-card @(champ.IsSeeded ? "" : "unseeded")"
+								 data-match-label="@champ.SlotLabel">
+								<input type="hidden" name="ChampionshipScores[@c].GameId" value="@champ.GameId" />
+
+								<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+									<span class="badge @(champ.Slot == BracketSlot.Championship ? "bg-warning text-dark" : "bg-success")">
+										@champ.SlotLabel
+									</span>
+									<small class="text-muted">
+										@(champ.ScheduledDateTime?.ToString("ddd, MMM d h:mm tt") ?? "Unscheduled")
+										@if (!string.IsNullOrWhiteSpace(champ.Location))
+										{
+											<span> &bull; @champ.Location</span>
+										}
+									</small>
+								</div>
+
+								<div class="row g-2 align-items-center">
+									<div class="col-12 col-md-4 fw-semibold @(champ.IsSeeded ? "" : "text-muted fst-italic")">
+										@champ.HomeDisplay
+									</div>
+									<div class="col-12 col-md-4">
+										<div class="d-flex justify-content-center align-items-center gap-2">
+											<label class="visually-hidden" for="champHome_@c">@champ.SlotLabel Home Goals</label>
+											<input type="number"
+												   id="champHome_@c"
+												   name="ChampionshipScores[@c].HomeGoals"
+												   value="@champ.HomeGoals"
+												   min="0"
+												   max="99"
+												   inputmode="numeric"
+												   disabled="@(!champ.IsSeeded)"
+												   class="form-control score-num-input home-goals-input" />
+											<span class="fw-bold">&ndash;</span>
+											<label class="visually-hidden" for="champAway_@c">@champ.SlotLabel Away Goals</label>
+											<input type="number"
+												   id="champAway_@c"
+												   name="ChampionshipScores[@c].AwayGoals"
+												   value="@champ.AwayGoals"
+												   min="0"
+												   max="99"
+												   inputmode="numeric"
+												   disabled="@(!champ.IsSeeded)"
+												   class="form-control score-num-input away-goals-input" />
+										</div>
+										<div class="form-check d-flex justify-content-center align-items-center gap-1 mt-1">
+											<input class="form-check-input forfeit-checkbox"
+												   type="checkbox"
+												   id="champForfeit_@c"
+												   name="ChampionshipScores[@c].IsForfeit"
+												   value="true"
+												   disabled="@(!champ.IsSeeded)"
+												   checked="@champ.IsForfeit" />
+											<label class="form-check-label small" for="champForfeit_@c">Forfeit (1&ndash;0)</label>
+										</div>
+									</div>
+									<div class="col-12 col-md-4 text-md-end fw-semibold @(champ.IsSeeded ? "" : "text-muted fst-italic")">
+										@champ.AwayDisplay
+									</div>
+								</div>
+
+								@if (champ.PairedRound4ShootoutId.HasValue)
+								{
+									var r4PsoIdx = psoIndex++;
+									<div class="pso-inline-band pso-pair-group"
+										 data-pso-label="PSO Round 4 (@champ.SlotLabel)">
+										<input type="hidden" name="PsoScores[@r4PsoIdx].ShootoutRoundId" value="@champ.PairedRound4ShootoutId.Value" />
+										<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+											<span class="badge bg-info-subtle text-info-emphasis">
+												<i class="bi bi-bullseye me-1" aria-hidden="true"></i>6-Team PSO Round 4 PK Goals
+											</span>
+											<div class="d-flex align-items-center gap-2">
+												<label class="small fw-semibold" for="r4PsoHome_@c">Home PK</label>
+												<input type="number"
+													   id="r4PsoHome_@c"
+													   name="PsoScores[@r4PsoIdx].HomePkGoals"
+													   value="@champ.HomePkGoals"
+													   min="0"
+													   max="99"
+													   inputmode="numeric"
+													   disabled="@(!champ.IsSeeded)"
+													   class="form-control form-control-sm score-num-input home-pk-input" />
+												<span class="fw-bold">&ndash;</span>
+												<input type="number"
+													   id="r4PsoAway_@c"
+													   name="PsoScores[@r4PsoIdx].AwayPkGoals"
+													   value="@champ.AwayPkGoals"
+													   min="0"
+													   max="99"
+													   inputmode="numeric"
+													   disabled="@(!champ.IsSeeded)"
+													   class="form-control form-control-sm score-num-input away-pk-input" />
+												<label class="small fw-semibold" for="r4PsoAway_@c">Away PK</label>
+											</div>
+										</div>
+									</div>
+								}
+							</div>
+						}
+					</div>
+				}
+
+				<div class="sticky-save-bar">
+					<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+						<div class="d-flex align-items-center gap-2">
+							<button type="submit" class="btn btn-primary btn-lg">
+								<i class="bi bi-save me-1" aria-hidden="true"></i>Save All Changes
+							</button>
+							<a href="/Scores?year=@Model.SelectedYear.Year&amp;division=@Model.SelectedDivision.DivisionKey&amp;round=@Model.SelectedRound"
+							   class="btn btn-outline-secondary">
+								Reset
+							</a>
+						</div>
+						<span id="unsavedChangesBadge" class="badge bg-warning text-dark d-none">
+							Unsaved edits
+						</span>
+					</div>
+				</div>
+			</form>
+		</div>
+
+		@if (Model.HasChampionshipBracket)
+		{
+			<div class="tab-pane fade @(isBracketActive ? "show active" : "")" id="scores-pane-bracket" role="tabpanel" aria-labelledby="scores-tab-bracket">
+				<form method="post" asp-action="SaveBatch">
+					<input type="hidden" name="Year" value="@Model.SelectedYear.Year" />
+					<input type="hidden" name="DivisionKey" value="@Model.SelectedDivision.DivisionKey" />
+					<input type="hidden" name="DivisionId" value="@Model.SelectedDivision.Id" />
+					<input type="hidden" name="ActiveTab" value="bracket" />
+
+					@{
+						var bracketOnlyPsoIdx = 0;
+					}
+					@for (var c = 0; c < Model.ChampionshipCards.Count; c++)
+					{
+						var champ = Model.ChampionshipCards[c];
+						<div class="score-entry-card bracket-card @(champ.IsSeeded ? "" : "unseeded")">
+							<input type="hidden" name="ChampionshipScores[@c].GameId" value="@champ.GameId" />
+							<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+								<span class="badge @(champ.Slot == BracketSlot.Championship ? "bg-warning text-dark" : "bg-success")">
+									@champ.SlotLabel
+								</span>
+								<small class="text-muted">
+									@(champ.ScheduledDateTime?.ToString("ddd, MMM d h:mm tt") ?? "Unscheduled")
+									@if (!string.IsNullOrWhiteSpace(champ.Location))
+									{
+										<span> &bull; @champ.Location</span>
+									}
+								</small>
+							</div>
+							<div class="row g-2 align-items-center">
+								<div class="col-12 col-md-4 fw-semibold">@champ.HomeDisplay</div>
+								<div class="col-12 col-md-4">
+									<div class="d-flex justify-content-center align-items-center gap-2">
+										<input type="number"
+											   name="ChampionshipScores[@c].HomeGoals"
+											   value="@champ.HomeGoals"
+											   min="0"
+											   max="99"
+											   inputmode="numeric"
+											   disabled="@(!champ.IsSeeded)"
+											   class="form-control score-num-input"
+											   aria-label="@champ.SlotLabel Home Goals" />
+										<span class="fw-bold">&ndash;</span>
+										<input type="number"
+											   name="ChampionshipScores[@c].AwayGoals"
+											   value="@champ.AwayGoals"
+											   min="0"
+											   max="99"
+											   inputmode="numeric"
+											   disabled="@(!champ.IsSeeded)"
+											   class="form-control score-num-input"
+											   aria-label="@champ.SlotLabel Away Goals" />
+									</div>
+									<div class="form-check d-flex justify-content-center align-items-center gap-1 mt-1">
+										<input class="form-check-input"
+											   type="checkbox"
+											   id="bracketTabForfeit_@c"
+											   name="ChampionshipScores[@c].IsForfeit"
+											   value="true"
+											   disabled="@(!champ.IsSeeded)"
+											   checked="@champ.IsForfeit" />
+										<label class="form-check-label small" for="bracketTabForfeit_@c">Forfeit (1&ndash;0)</label>
+									</div>
+								</div>
+								<div class="col-12 col-md-4 text-md-end fw-semibold">@champ.AwayDisplay</div>
+							</div>
+
+							@if (champ.PairedRound4ShootoutId.HasValue)
+							{
+								var pIdx = bracketOnlyPsoIdx++;
+								<div class="pso-inline-band">
+									<input type="hidden" name="PsoScores[@pIdx].ShootoutRoundId" value="@champ.PairedRound4ShootoutId.Value" />
+									<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+										<span class="badge bg-info-subtle text-info-emphasis">6-Team PSO Round 4 PK Goals</span>
+										<div class="d-flex align-items-center gap-2">
+											<input type="number"
+												   name="PsoScores[@pIdx].HomePkGoals"
+												   value="@champ.HomePkGoals"
+												   min="0"
+												   max="99"
+												   inputmode="numeric"
+												   disabled="@(!champ.IsSeeded)"
+												   class="form-control form-control-sm score-num-input"
+												   aria-label="Home PK Goals" />
+											<span class="fw-bold">&ndash;</span>
+											<input type="number"
+												   name="PsoScores[@pIdx].AwayPkGoals"
+												   value="@champ.AwayPkGoals"
+												   min="0"
+												   max="99"
+												   inputmode="numeric"
+												   disabled="@(!champ.IsSeeded)"
+												   class="form-control form-control-sm score-num-input"
+												   aria-label="Away PK Goals" />
+										</div>
+									</div>
+								</div>
+							}
+						</div>
+					}
+
+					<button type="submit" class="btn btn-primary btn-lg mt-2">
+						<i class="bi bi-save me-1" aria-hidden="true"></i>Save Bracket Scores
+					</button>
+				</form>
+			</div>
+		}
+
+		<!-- KFTM Manual Tiebreakers Tab -->
+		<div class="tab-pane fade @(isKftmActive ? "show active" : "")" id="scores-pane-kftm" role="tabpanel" aria-labelledby="scores-tab-kftm">
+			<div class="alert alert-secondary small mb-3">
+				<strong>Kicks From The Mark (KFTM)</strong> overrides are used <em>only</em> when teams remain tied after all formula tiebreakers.
+				Pool-Play KFTM and PSO KFTM are completely independent.
+			</div>
+
+			@if (Model.ActiveKftmPrompts.Count > 0)
+			{
+				<div class="card border-warning mb-4">
+					<div class="card-header bg-warning-subtle text-warning-emphasis fw-bold">
+						<i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
+						Active Deadlocks Requiring Live KFTM (@Model.ActiveKftmPrompts.Count)
+					</div>
+					<div class="card-body">
+						@foreach (var prompt in Model.ActiveKftmPrompts)
+						{
+							<div class="border rounded p-3 mb-2">
+								<div class="fw-bold mb-1">@prompt.ContextLabel (@prompt.Scope)</div>
+								<div class="small text-muted mb-2">
+									Tied teams: @string.Join(" vs ", prompt.TiedTeams.Select(t => t.Text))
+								</div>
+								@if (prompt.TiedTeams.Count >= 2)
+								{
+									<form method="post" asp-action="UpsertKftm" class="row g-2 align-items-end">
+										<input type="hidden" name="year" value="@Model.SelectedYear.Year" />
+										<input type="hidden" name="divisionKey" value="@Model.SelectedDivision.DivisionKey" />
+										<input type="hidden" name="divisionId" value="@Model.SelectedDivision.Id" />
+										<input type="hidden" name="scope" value="@prompt.Scope" />
+
+										<div class="col-12 col-sm-4">
+											<label class="form-label small mb-1">Team A</label>
+											<select name="teamAId" class="form-select form-select-sm">
+												@for (var t = 0; t < prompt.TiedTeams.Count; t++)
+												{
+													<option value="@prompt.TiedTeams[t].Value" selected="@(t == 0)">@prompt.TiedTeams[t].Text</option>
+												}
+											</select>
+										</div>
+										<div class="col-12 col-sm-4">
+											<label class="form-label small mb-1">Team B</label>
+											<select name="teamBId" class="form-select form-select-sm">
+												@for (var t = 0; t < prompt.TiedTeams.Count; t++)
+												{
+													<option value="@prompt.TiedTeams[t].Value" selected="@(t == 1)">@prompt.TiedTeams[t].Text</option>
+												}
+											</select>
+										</div>
+										<div class="col-12 col-sm-4">
+											<label class="form-label small mb-1">KFTM Winner</label>
+											<div class="d-flex gap-2">
+												<select name="winningTeamId" class="form-select form-select-sm">
+													@foreach (var opt in prompt.TiedTeams)
+													{
+														<option value="@opt.Value">@opt.Text</option>
+													}
+												</select>
+												<button type="submit" class="btn btn-sm btn-warning flex-shrink-0">Save</button>
+											</div>
+										</div>
+									</form>
+								}
+							</div>
+						}
+					</div>
+				</div>
+			}
+
+			<div class="row g-3">
+				<div class="col-12 col-lg-5">
+					<div class="card">
+						<div class="card-header fw-bold">Record Manual KFTM Result</div>
+						<div class="card-body">
+							<form method="post" asp-action="UpsertKftm">
+								<input type="hidden" name="year" value="@Model.SelectedYear.Year" />
+								<input type="hidden" name="divisionKey" value="@Model.SelectedDivision.DivisionKey" />
+								<input type="hidden" name="divisionId" value="@Model.SelectedDivision.Id" />
+
+								<div class="mb-2">
+									<label class="form-label small fw-semibold" for="manualKftmScope">Competition Scope</label>
+									<select id="manualKftmScope" name="scope" class="form-select form-select-sm">
+										<option value="@TiebreakerScope.PoolPlayStandings">Pool-Play Standings</option>
+										<option value="@TiebreakerScope.PsoStandings">Penalty Shootout (PSO) Standings</option>
+									</select>
+								</div>
+								<div class="mb-2">
+									<label class="form-label small fw-semibold" for="manualTeamA">Team A</label>
+									<select id="manualTeamA" name="teamAId" class="form-select form-select-sm" asp-items="Model.DivisionTeamOptions"></select>
+								</div>
+								<div class="mb-2">
+									<label class="form-label small fw-semibold" for="manualTeamB">Team B</label>
+									<select id="manualTeamB" name="teamBId" class="form-select form-select-sm" asp-items="Model.DivisionTeamOptions"></select>
+								</div>
+								<div class="mb-3">
+									<label class="form-label small fw-semibold" for="manualWinner">KFTM Winning Team</label>
+									<select id="manualWinner" name="winningTeamId" class="form-select form-select-sm" asp-items="Model.DivisionTeamOptions"></select>
+								</div>
+								<button type="submit" class="btn btn-primary btn-sm w-100">
+									<i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Save KFTM Override
+								</button>
+							</form>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-12 col-lg-7">
+					<div class="card">
+						<div class="card-header fw-bold">Saved KFTM Overrides (@Model.SavedKftmOverrides.Count)</div>
+						<div class="card-body">
+							@if (Model.SavedKftmOverrides.Count == 0)
+							{
+								<p class="text-muted small mb-0">No KFTM overrides recorded for @Model.SelectedDivision.Name.</p>
+							}
+							else
+							{
+								<div class="list-group">
+									@foreach (var ov in Model.SavedKftmOverrides)
+									{
+										<div class="list-group-item d-flex justify-content-between align-items-center gap-2">
+											<div>
+												<span class="badge @(ov.Scope == TiebreakerScope.PoolPlayStandings ? "bg-primary" : "bg-info text-dark") me-1">
+													@(ov.Scope == TiebreakerScope.PoolPlayStandings ? "Pool Play" : "PSO")
+												</span>
+												<strong class="small">@ov.TeamADisplay vs @ov.TeamBDisplay</strong>
+												<div class="small text-success fw-semibold">
+													Winner: @ov.WinnerDisplay
+												</div>
+											</div>
+											<form method="post" asp-action="RemoveKftm" class="remove-kftm-form">
+												<input type="hidden" name="year" value="@Model.SelectedYear.Year" />
+												<input type="hidden" name="divisionKey" value="@Model.SelectedDivision.DivisionKey" />
+												<input type="hidden" name="overrideId" value="@ov.Id" />
+												<button type="submit" class="btn btn-sm btn-outline-danger" title="Remove override">
+													<i class="bi bi-trash" aria-hidden="true"></i>
+												</button>
+											</form>
+										</div>
+									}
+								</div>
+							}
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+@section Scripts {
+	<script src="~/js/scores-entry.js" asp-append-version="true"></script>
+}

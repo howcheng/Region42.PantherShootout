@@ -1,0 +1,10 @@
+/* Penalty Shootout (PSO) Page Styles */
+
+.pso-matchup-card {
+  border: 1px solid var(--bs-border-color);
+  border-left: 4px solid #0dcaf0;
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background-color: var(--bs-body-bg);
+}

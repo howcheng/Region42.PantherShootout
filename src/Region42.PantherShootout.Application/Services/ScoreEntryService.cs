@@ -93,6 +93,40 @@ public class ScoreEntryService : IScoreEntryService
 		return RemoveKftmOverrideInternalAsync(overrideId, cancellationToken);
 	}
 
+	public Task<DivisionStandingsSnapshotDocument> SaveDivisionScoresBatchAsync(
+		DivisionScoreBatchUpdateDto batch,
+		CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(batch);
+		ArgumentOutOfRangeException.ThrowIfNegativeOrZero(batch.DivisionId);
+
+		foreach (var poolItem in batch.PoolPlayScores ?? [])
+		{
+			ArgumentNullException.ThrowIfNull(poolItem);
+			ArgumentOutOfRangeException.ThrowIfNegativeOrZero(poolItem.GameId);
+			ValidateNonNegativeCards(poolItem);
+			ValidateForfeitScore(poolItem.IsForfeit, poolItem.HomeGoals, poolItem.AwayGoals);
+			ValidateGoalPair(poolItem.HomeGoals, poolItem.AwayGoals);
+		}
+
+		foreach (var champItem in batch.ChampionshipScores ?? [])
+		{
+			ArgumentNullException.ThrowIfNull(champItem);
+			ArgumentOutOfRangeException.ThrowIfNegativeOrZero(champItem.GameId);
+			ValidateForfeitScore(champItem.IsForfeit, champItem.HomeGoals, champItem.AwayGoals);
+			ValidateGoalPair(champItem.HomeGoals, champItem.AwayGoals);
+		}
+
+		foreach (var psoItem in batch.PsoScores ?? [])
+		{
+			ArgumentNullException.ThrowIfNull(psoItem);
+			ArgumentOutOfRangeException.ThrowIfNegativeOrZero(psoItem.ShootoutRoundId);
+			ValidateGoalPair(psoItem.HomePkGoals, psoItem.AwayPkGoals);
+		}
+
+		return SaveDivisionScoresBatchInternalAsync(batch, cancellationToken);
+	}
+
 	private async Task<DivisionStandingsSnapshotDocument> SavePoolPlayScoreInternalAsync(
 		PoolPlayScoreUpdateDto update,
 		CancellationToken cancellationToken)
@@ -223,8 +257,12 @@ public class ScoreEntryService : IScoreEntryService
 		var existing = _dataContext.TiebreakerOverrides.FirstOrDefault(o => o.Id == overrideId);
 		if (existing is null)
 		{
-			// Override may live on a division document that is not loaded yet — scan loaded set only.
-			// Callers should load the tournament/division first; try locating via any loaded override.
+			await _dataContext.LoadAllAsync(cancellationToken).ConfigureAwait(false);
+			existing = _dataContext.TiebreakerOverrides.FirstOrDefault(o => o.Id == overrideId);
+		}
+
+		if (existing is null)
+		{
 			throw new InvalidOperationException($"KFTM override {overrideId} was not found in the data context.");
 		}
 
@@ -239,6 +277,136 @@ public class ScoreEntryService : IScoreEntryService
 		return await _standingsRefreshService
 			.RefreshDivisionAsync(divisionId, saveChanges: true, cancellationToken)
 			.ConfigureAwait(false);
+	}
+
+	private async Task<DivisionStandingsSnapshotDocument> SaveDivisionScoresBatchInternalAsync(
+		DivisionScoreBatchUpdateDto batch,
+		CancellationToken cancellationToken)
+	{
+		await _dataContext.LoadDivisionDataAsync(batch.DivisionId, cancellationToken).ConfigureAwait(false);
+
+		if (_dataContext.Divisions.All(d => d.Id != batch.DivisionId))
+		{
+			throw new InvalidOperationException($"Division {batch.DivisionId} was not found.");
+		}
+
+		await using var tx = await _dataContext.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
+		foreach (var poolUpdate in batch.PoolPlayScores ?? [])
+		{
+			var game = _dataContext.PoolPlayGames.FirstOrDefault(g =>
+				g.Id == poolUpdate.GameId && g.DivisionId == batch.DivisionId)
+				?? throw new InvalidOperationException(
+					$"Pool-play game {poolUpdate.GameId} was not found in division {batch.DivisionId}.");
+
+			if (HasPoolPlayChanges(game, poolUpdate))
+			{
+				game.HomeGoals = poolUpdate.HomeGoals;
+				game.AwayGoals = poolUpdate.AwayGoals;
+				game.IsForfeit = poolUpdate.IsForfeit;
+				game.HomeYellowCards = poolUpdate.HomeYellowCards;
+				game.HomeRedCards = poolUpdate.HomeRedCards;
+				game.AwayYellowCards = poolUpdate.AwayYellowCards;
+				game.AwayRedCards = poolUpdate.AwayRedCards;
+
+				_dataContext.Update(game);
+			}
+		}
+
+		if ((batch.PoolPlayScores?.Count ?? 0) > 0 &&
+			((batch.ChampionshipScores?.Count ?? 0) > 0 || (batch.PsoScores?.Count ?? 0) > 0))
+		{
+			// Seed opening bracket games and 6-team PSO Round 4 pairings in memory before applying bracket/PSO edits
+			await _standingsRefreshService
+				.RefreshDivisionAsync(batch.DivisionId, saveChanges: false, cancellationToken)
+				.ConfigureAwait(false);
+		}
+
+		foreach (var champUpdate in batch.ChampionshipScores ?? [])
+		{
+			var game = _dataContext.ChampionshipGames.FirstOrDefault(g =>
+				g.Id == champUpdate.GameId && g.DivisionId == batch.DivisionId)
+				?? throw new InvalidOperationException(
+					$"Championship game {champUpdate.GameId} was not found in division {batch.DivisionId}.");
+
+			if (game.HomeTeamId is null || game.AwayTeamId is null)
+			{
+				if (champUpdate.HomeGoals is null && champUpdate.AwayGoals is null && !champUpdate.IsForfeit)
+				{
+					continue;
+				}
+
+				throw new InvalidOperationException(
+					$"Championship game {champUpdate.GameId} cannot accept a score until both teams are seeded.");
+			}
+
+			if (HasChampionshipChanges(game, champUpdate))
+			{
+				game.HomeGoals = champUpdate.HomeGoals;
+				game.AwayGoals = champUpdate.AwayGoals;
+				game.IsForfeit = champUpdate.IsForfeit;
+
+				_dataContext.Update(game);
+			}
+		}
+
+		foreach (var psoUpdate in batch.PsoScores ?? [])
+		{
+			var round = _dataContext.ShootoutRounds.FirstOrDefault(r =>
+				r.Id == psoUpdate.ShootoutRoundId && r.DivisionId == batch.DivisionId)
+				?? throw new InvalidOperationException(
+					$"Shootout round {psoUpdate.ShootoutRoundId} was not found in division {batch.DivisionId}.");
+
+			if (round.HomeTeamId is null || round.AwayTeamId is null)
+			{
+				if (psoUpdate.HomePkGoals is null && psoUpdate.AwayPkGoals is null)
+				{
+					continue;
+				}
+
+				throw new InvalidOperationException(
+					$"Shootout round {psoUpdate.ShootoutRoundId} cannot accept PK scores until both teams are assigned.");
+			}
+
+			if (HasPsoChanges(round, psoUpdate))
+			{
+				round.HomePkGoals = psoUpdate.HomePkGoals;
+				round.AwayPkGoals = psoUpdate.AwayPkGoals;
+
+				_dataContext.Update(round);
+			}
+		}
+
+		var snapshot = await _standingsRefreshService
+			.RefreshDivisionAsync(batch.DivisionId, saveChanges: true, cancellationToken)
+			.ConfigureAwait(false);
+
+		await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+		return snapshot;
+	}
+
+	private static bool HasPoolPlayChanges(PoolPlayGame game, PoolPlayScoreUpdateDto update)
+	{
+		return game.HomeGoals != update.HomeGoals ||
+			game.AwayGoals != update.AwayGoals ||
+			game.IsForfeit != update.IsForfeit ||
+			game.HomeYellowCards != update.HomeYellowCards ||
+			game.HomeRedCards != update.HomeRedCards ||
+			game.AwayYellowCards != update.AwayYellowCards ||
+			game.AwayRedCards != update.AwayRedCards;
+	}
+
+	private static bool HasChampionshipChanges(ChampionshipGame game, ChampionshipScoreUpdateDto update)
+	{
+		return game.HomeGoals != update.HomeGoals ||
+			game.AwayGoals != update.AwayGoals ||
+			game.IsForfeit != update.IsForfeit;
+	}
+
+	private static bool HasPsoChanges(ShootoutRound round, PsoScoreUpdateDto update)
+	{
+		return round.HomePkGoals != update.HomePkGoals ||
+			round.AwayPkGoals != update.AwayPkGoals;
 	}
 
 	private async Task EnsureDivisionDataForPoolPlayGameAsync(int gameId, CancellationToken cancellationToken)

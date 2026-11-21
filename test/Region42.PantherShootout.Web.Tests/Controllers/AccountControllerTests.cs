@@ -79,7 +79,9 @@ public class AccountControllerTests
 	[Fact]
 	public void HomeController_Error_ReturnsErrorViewModelWithRequestId()
 	{
-		var controller = new HomeController
+		var controller = new HomeController(
+			Mock.Of<Region42.PantherShootout.Application.Interfaces.ITournamentYearService>(),
+			Mock.Of<Region42.PantherShootout.Domain.Interfaces.ITournamentDataContext>())
 		{
 			ControllerContext = new ControllerContext
 			{

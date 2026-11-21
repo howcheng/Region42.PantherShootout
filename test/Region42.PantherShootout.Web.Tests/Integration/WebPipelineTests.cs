@@ -57,7 +57,7 @@ public sealed partial class WebPipelineTests : IDisposable
 		Assert.True(headerNonceMatch.Success, $"Expected nonce in CSP header, got: {csp}");
 		var expectedNonce = headerNonceMatch.Groups[1].Value;
 
-		var html = await response.Content.ReadAsStringAsync();
+		var html = System.Net.WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
 		var scriptTags = ScriptTagRegex().Matches(html);
 		Assert.True(scriptTags.Count >= 3, $"Expected at least 3 rendered <script> tags in layout, found {scriptTags.Count}.");
 
@@ -147,6 +147,54 @@ public sealed partial class WebPipelineTests : IDisposable
 		Assert.True(allowedResult.Succeeded);
 		Assert.False(externalResult.Succeeded);
 		Assert.False(anonymousResult.Succeeded);
+	}
+
+	[Theory]
+	[InlineData("/")]
+	[InlineData("/shootout")]
+	public async Task PublicRoutes_Return200WithMatchingCspNonceAndZeroInlineStyles(string path)
+	{
+		using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+		{
+			AllowAutoRedirect = false,
+			BaseAddress = new Uri("https://localhost")
+		});
+
+		using var response = await client.GetAsync(path);
+
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+		var csp = Assert.Single(response.Headers.GetValues("Content-Security-Policy"));
+		var expectedNonce = CspHeaderNonceRegex().Match(csp).Groups[1].Value;
+		Assert.NotEmpty(expectedNonce);
+		var rawHtml = await response.Content.ReadAsStringAsync();
+		Assert.DoesNotContain("style=\"", rawHtml, StringComparison.OrdinalIgnoreCase);
+
+		var decodedHtml = System.Net.WebUtility.HtmlDecode(rawHtml);
+		foreach (Match scriptTag in ScriptTagRegex().Matches(decodedHtml))
+		{
+			Assert.Contains($"nonce=\"{expectedNonce}\"", scriptTag.Value);
+		}
+	}
+
+	[Theory]
+	[InlineData("/Scores")]
+	[InlineData("/Import/Upload")]
+	[InlineData("/Admin/Years")]
+	[InlineData("/Admin/Divisions")]
+	[InlineData("/Admin/Regions")]
+	public async Task AdminRoutes_WhenAnonymous_ChallengeGoogleOAuthEndpoint(string path)
+	{
+		using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+		{
+			AllowAutoRedirect = false,
+			BaseAddress = new Uri("https://localhost")
+		});
+
+		using var response = await client.GetAsync(path);
+
+		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+		Assert.NotNull(response.Headers.Location);
+		Assert.StartsWith("https://accounts.google.com/o/oauth2/v2/auth", response.Headers.Location.ToString());
 	}
 
 	public void Dispose()

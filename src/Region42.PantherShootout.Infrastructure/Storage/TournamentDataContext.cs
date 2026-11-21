@@ -172,6 +172,11 @@ public class TournamentDataContext : ITournamentDataContext
 	private async Task LoadTournamentYearAndWireAsync(int year, string competitionSlug, CancellationToken cancellationToken)
 	{
 		await LoadTournamentYearInternalAsync(year, competitionSlug, cancellationToken);
+		if (_regionsStorage is null)
+		{
+			await LoadRegionsInternalAsync(cancellationToken);
+		}
+
 		WireNavigationProperties();
 		RecalculateNextId();
 	}
@@ -264,7 +269,16 @@ public class TournamentDataContext : ITournamentDataContext
 		if (!_divisionTournamentPath.TryGetValue(divisionId, out var tournamentPath) ||
 			!_divisionKeyById.TryGetValue(divisionId, out var divisionKey))
 		{
-			throw new InvalidOperationException($"Division {divisionId} is not loaded.");
+			if (!_isLoaded)
+			{
+				await LoadAllAsync(cancellationToken);
+			}
+
+			if (!_divisionTournamentPath.TryGetValue(divisionId, out tournamentPath) ||
+				!_divisionKeyById.TryGetValue(divisionId, out divisionKey))
+			{
+				throw new InvalidOperationException($"Division {divisionId} is not loaded.");
+			}
 		}
 
 		await LoadDivisionDataInternalAsync(tournamentPath.Year, tournamentPath.Slug, divisionKey, divisionId, cancellationToken);
