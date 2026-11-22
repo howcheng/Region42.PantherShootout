@@ -8,7 +8,7 @@ using Region42.PantherShootout.Domain.Interfaces;
 namespace Region42.PantherShootout.Application.Services;
 
 /// <summary>
-/// Validates score / KFTM inputs, updates tracked entities, refreshes division standings, and saves.
+/// Validates score / KFTM / schedule inputs, updates tracked entities, refreshes division standings, and saves.
 /// </summary>
 public class ScoreEntryService : IScoreEntryService
 {
@@ -143,6 +143,7 @@ public class ScoreEntryService : IScoreEntryService
 		game.HomeRedCards = update.HomeRedCards;
 		game.AwayYellowCards = update.AwayYellowCards;
 		game.AwayRedCards = update.AwayRedCards;
+		ApplyScheduleUpdate(game, update.NewScheduledDateTime, update.NewLocation);
 
 		_dataContext.Update(game);
 
@@ -169,6 +170,7 @@ public class ScoreEntryService : IScoreEntryService
 		game.HomeGoals = update.HomeGoals;
 		game.AwayGoals = update.AwayGoals;
 		game.IsForfeit = update.IsForfeit;
+		ApplyScheduleUpdate(game, update.NewScheduledDateTime, update.NewLocation);
 
 		_dataContext.Update(game);
 
@@ -308,6 +310,7 @@ public class ScoreEntryService : IScoreEntryService
 				game.HomeRedCards = poolUpdate.HomeRedCards;
 				game.AwayYellowCards = poolUpdate.AwayYellowCards;
 				game.AwayRedCards = poolUpdate.AwayRedCards;
+				ApplyScheduleUpdate(game, poolUpdate.NewScheduledDateTime, poolUpdate.NewLocation);
 
 				_dataContext.Update(game);
 			}
@@ -333,6 +336,12 @@ public class ScoreEntryService : IScoreEntryService
 			{
 				if (champUpdate.HomeGoals is null && champUpdate.AwayGoals is null && !champUpdate.IsForfeit)
 				{
+					// Unseeded bracket games can still be rescheduled (field/time moves).
+					if (ApplyScheduleUpdate(game, champUpdate.NewScheduledDateTime, champUpdate.NewLocation))
+					{
+						_dataContext.Update(game);
+					}
+
 					continue;
 				}
 
@@ -345,6 +354,7 @@ public class ScoreEntryService : IScoreEntryService
 				game.HomeGoals = champUpdate.HomeGoals;
 				game.AwayGoals = champUpdate.AwayGoals;
 				game.IsForfeit = champUpdate.IsForfeit;
+				ApplyScheduleUpdate(game, champUpdate.NewScheduledDateTime, champUpdate.NewLocation);
 
 				_dataContext.Update(game);
 			}
@@ -393,14 +403,117 @@ public class ScoreEntryService : IScoreEntryService
 			game.HomeYellowCards != update.HomeYellowCards ||
 			game.HomeRedCards != update.HomeRedCards ||
 			game.AwayYellowCards != update.AwayYellowCards ||
-			game.AwayRedCards != update.AwayRedCards;
+			game.AwayRedCards != update.AwayRedCards ||
+			HasScheduleChanges(game.ScheduledDateTime, game.Location, update.NewScheduledDateTime, update.NewLocation);
 	}
 
 	private static bool HasChampionshipChanges(ChampionshipGame game, ChampionshipScoreUpdateDto update)
 	{
 		return game.HomeGoals != update.HomeGoals ||
 			game.AwayGoals != update.AwayGoals ||
-			game.IsForfeit != update.IsForfeit;
+			game.IsForfeit != update.IsForfeit ||
+			HasScheduleChanges(game.ScheduledDateTime, game.Location, update.NewScheduledDateTime, update.NewLocation);
+	}
+
+	private static bool ApplyScheduleUpdate(
+		PoolPlayGame game,
+		DateTime? newScheduledDateTime,
+		string? newLocation)
+	{
+		return ApplyScheduleUpdateCore(
+			game.ScheduledDateTime,
+			game.Location,
+			newScheduledDateTime,
+			newLocation,
+			value => game.ScheduledDateTime = value,
+			value => game.Location = value);
+	}
+
+	private static bool ApplyScheduleUpdate(
+		ChampionshipGame game,
+		DateTime? newScheduledDateTime,
+		string? newLocation)
+	{
+		return ApplyScheduleUpdateCore(
+			game.ScheduledDateTime,
+			game.Location,
+			newScheduledDateTime,
+			newLocation,
+			value => game.ScheduledDateTime = value,
+			value => game.Location = value);
+	}
+
+	private static bool ApplyScheduleUpdateCore(
+		DateTime? existingDateTime,
+		string existingLocation,
+		DateTime? newScheduledDateTime,
+		string? newLocation,
+		Action<DateTime?> setDateTime,
+		Action<string> setLocation)
+	{
+		var changed = false;
+
+		if (newScheduledDateTime.HasValue)
+		{
+			var normalizedNew = TruncateToMinute(newScheduledDateTime.Value);
+			var normalizedExisting = existingDateTime.HasValue
+				? TruncateToMinute(existingDateTime.Value)
+				: (DateTime?)null;
+
+			if (normalizedExisting != normalizedNew)
+			{
+				setDateTime(normalizedNew);
+				changed = true;
+			}
+		}
+
+		if (newLocation is not null)
+		{
+			var trimmed = newLocation.Trim();
+			if (!string.Equals(existingLocation, trimmed, StringComparison.Ordinal))
+			{
+				setLocation(trimmed);
+				changed = true;
+			}
+		}
+
+		return changed;
+	}
+
+	private static bool HasScheduleChanges(
+		DateTime? existingDateTime,
+		string existingLocation,
+		DateTime? newScheduledDateTime,
+		string? newLocation)
+	{
+		if (newScheduledDateTime.HasValue)
+		{
+			var normalizedNew = TruncateToMinute(newScheduledDateTime.Value);
+			var normalizedExisting = existingDateTime.HasValue
+				? TruncateToMinute(existingDateTime.Value)
+				: (DateTime?)null;
+
+			if (normalizedExisting != normalizedNew)
+			{
+				return true;
+			}
+		}
+
+		if (newLocation is not null)
+		{
+			var trimmed = newLocation.Trim();
+			if (!string.Equals(existingLocation, trimmed, StringComparison.Ordinal))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static DateTime TruncateToMinute(DateTime value)
+	{
+		return new DateTime(value.Year, value.Month, value.Day, value.Hour, value.Minute, 0, value.Kind);
 	}
 
 	private static bool HasPsoChanges(ShootoutRound round, PsoScoreUpdateDto update)

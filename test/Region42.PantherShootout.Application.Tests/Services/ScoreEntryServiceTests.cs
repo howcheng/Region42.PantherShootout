@@ -327,6 +327,136 @@ public class ScoreEntryServiceTests
 	}
 
 	[Fact]
+	public async Task SaveDivisionScoresBatchAsync_UpdatesScheduleFieldsWithoutScoreChanges()
+	{
+		var division = new Division
+		{
+			Id = 8,
+			TournamentYearId = 1,
+			AgeGroup = AgeGroup.U10,
+			Gender = Gender.Girls,
+			Name = "10U Girls",
+			Size = DivisionSize.Four,
+		};
+		var poolGame = new PoolPlayGame
+		{
+			Id = 51,
+			DivisionId = 8,
+			PoolId = 1,
+			Round = 1,
+			HomeTeamId = 1,
+			AwayTeamId = 2,
+			ScheduledDateTime = new DateTime(2026, 11, 21, 9, 0, 0),
+			Location = "Field 1",
+		};
+		var champGame = new ChampionshipGame
+		{
+			Id = 61,
+			DivisionId = 8,
+			Slot = BracketSlot.Championship,
+			HomeSourceDescription = "1st",
+			AwaySourceDescription = "2nd",
+			HomeTeamId = null,
+			AwayTeamId = null,
+			ScheduledDateTime = new DateTime(2026, 11, 22, 14, 0, 0),
+			Location = "Field 2",
+		};
+
+		var tx = new Mock<ITransaction>(MockBehavior.Strict);
+		tx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+		tx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
+
+		var context = new Mock<ITournamentDataContext>(MockBehavior.Strict);
+		context.Setup(c => c.LoadDivisionDataAsync(8, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+		context.SetupGet(c => c.Divisions).Returns([division]);
+		context.SetupGet(c => c.PoolPlayGames).Returns([poolGame]);
+		context.SetupGet(c => c.ChampionshipGames).Returns([champGame]);
+		context.SetupGet(c => c.ShootoutRounds).Returns([]);
+		context.Setup(c => c.BeginTransactionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(tx.Object);
+		context.Setup(c => c.Update(poolGame));
+		context.Setup(c => c.Update(champGame));
+
+		var refresh = new Mock<IStandingsRefreshService>(MockBehavior.Strict);
+		refresh.Setup(r => r.RefreshDivisionAsync(8, false, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new DivisionStandingsSnapshotDocument());
+		refresh.Setup(r => r.RefreshDivisionAsync(8, true, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new DivisionStandingsSnapshotDocument());
+
+		var service = new ScoreEntryService(context.Object, refresh.Object);
+
+		await service.SaveDivisionScoresBatchAsync(new DivisionScoreBatchUpdateDto
+		{
+			DivisionId = 8,
+			PoolPlayScores =
+			[
+				new PoolPlayScoreUpdateDto
+				{
+					GameId = 51,
+					NewScheduledDateTime = new DateTime(2026, 11, 21, 10, 30, 0),
+					NewLocation = " Field 3 ",
+				},
+			],
+			ChampionshipScores =
+			[
+				new ChampionshipScoreUpdateDto
+				{
+					GameId = 61,
+					NewScheduledDateTime = new DateTime(2026, 11, 22, 15, 15, 0),
+					NewLocation = "Field 4",
+				},
+			],
+		});
+
+		Assert.Equal(new DateTime(2026, 11, 21, 10, 30, 0), poolGame.ScheduledDateTime);
+		Assert.Equal("Field 3", poolGame.Location);
+		Assert.Null(poolGame.HomeGoals);
+		Assert.Equal(new DateTime(2026, 11, 22, 15, 15, 0), champGame.ScheduledDateTime);
+		Assert.Equal("Field 4", champGame.Location);
+		context.Verify(c => c.Update(poolGame), Times.Once);
+		context.Verify(c => c.Update(champGame), Times.Once);
+	}
+
+	[Fact]
+	public async Task SavePoolPlayScoreAsync_AppliesScheduleWhenProvided()
+	{
+		var game = new PoolPlayGame
+		{
+			Id = 12,
+			DivisionId = 5,
+			PoolId = 1,
+			Round = 1,
+			HomeTeamId = 1,
+			AwayTeamId = 2,
+			ScheduledDateTime = new DateTime(2026, 11, 21, 8, 0, 0),
+			Location = "Field 1",
+		};
+
+		var context = new Mock<ITournamentDataContext>(MockBehavior.Strict);
+		context.SetupGet(c => c.PoolPlayGames).Returns([game]);
+		context.Setup(c => c.LoadDivisionDataAsync(5, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+		context.Setup(c => c.Update(game));
+
+		var refresh = new Mock<IStandingsRefreshService>(MockBehavior.Strict);
+		refresh
+			.Setup(r => r.RefreshDivisionAsync(5, true, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new DivisionStandingsSnapshotDocument());
+
+		var service = new ScoreEntryService(context.Object, refresh.Object);
+
+		await service.SavePoolPlayScoreAsync(new PoolPlayScoreUpdateDto
+		{
+			GameId = 12,
+			HomeGoals = 1,
+			AwayGoals = 0,
+			NewScheduledDateTime = new DateTime(2026, 11, 21, 8, 45, 0),
+			NewLocation = "Field 7",
+		});
+
+		Assert.Equal(new DateTime(2026, 11, 21, 8, 45, 0), game.ScheduledDateTime);
+		Assert.Equal("Field 7", game.Location);
+	}
+
+	[Fact]
 	public async Task SaveDivisionScoresBatchAsync_SkipsUpdateForUnchangedItems()
 	{
 		var division = new Division

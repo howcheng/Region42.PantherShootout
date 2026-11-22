@@ -170,13 +170,47 @@ else
 								<span class="badge bg-primary">Round @card.Round</span>
 								<span class="badge bg-secondary-subtle text-secondary-emphasis">Pool @card.PoolName</span>
 							</div>
-							<small class="text-muted">
-								@(card.ScheduledDateTime?.ToString("ddd, MMM d h:mm tt") ?? "Unscheduled")
-								@if (!string.IsNullOrWhiteSpace(card.Location))
-								{
-									<span> &bull; @card.Location</span>
-								}
-							</small>
+							<div class="d-flex align-items-center gap-1">
+								<small class="text-muted">
+									@(card.ScheduledDateTime?.ToString("ddd, MMM d h:mm tt") ?? "Unscheduled")
+									@if (!string.IsNullOrWhiteSpace(card.Location))
+									{
+										<span> &bull; @card.Location</span>
+									}
+								</small>
+								<button type="button"
+										id="togglePoolScheduleBtn_@i"
+										class="btn btn-sm btn-outline-secondary schedule-edit-toggle flex-shrink-0"
+										data-target="poolScheduleFields_@i"
+										title="Edit date/time and field"
+										aria-expanded="false"
+										aria-controls="poolScheduleFields_@i">
+									<i class="bi bi-pencil-square" aria-hidden="true"></i>
+								</button>
+							</div>
+						</div>
+
+						<div id="poolScheduleFields_@i" class="schedule-edit-fields mb-2 d-none">
+							<div class="row g-2">
+								<div class="col-12 col-md-6">
+									<label class="form-label form-label-sm mb-0" for="poolNewDateTime_@i">Date/Time</label>
+									<input type="datetime-local"
+										   id="poolNewDateTime_@i"
+										   name="PoolPlayScores[@i].NewScheduledDateTime"
+										   value="@(card.ScheduledDateTime?.ToString("yyyy-MM-ddTHH:mm"))"
+										   class="form-control form-control-sm" />
+								</div>
+								<div class="col-12 col-md-6">
+									<label class="form-label form-label-sm mb-0" for="poolNewLocation_@i">Field</label>
+									<input type="text"
+										   id="poolNewLocation_@i"
+										   name="PoolPlayScores[@i].NewLocation"
+										   value="@card.Location"
+										   class="form-control form-control-sm"
+										   maxlength="64"
+										   autocomplete="off" />
+								</div>
+							</div>
 						</div>
 
 						<div class="row g-2 align-items-center">
@@ -333,13 +367,47 @@ else
 									<span class="badge @(champ.Slot == BracketSlot.Championship ? "bg-warning text-dark" : "bg-success")">
 										@champ.SlotLabel
 									</span>
-									<small class="text-muted">
-										@(champ.ScheduledDateTime?.ToString("ddd, MMM d h:mm tt") ?? "Unscheduled")
-										@if (!string.IsNullOrWhiteSpace(champ.Location))
-										{
-											<span> &bull; @champ.Location</span>
-										}
-									</small>
+									<div class="d-flex align-items-center gap-1">
+										<small class="text-muted">
+											@(champ.ScheduledDateTime?.ToString("ddd, MMM d h:mm tt") ?? "Unscheduled")
+											@if (!string.IsNullOrWhiteSpace(champ.Location))
+											{
+												<span> &bull; @champ.Location</span>
+											}
+										</small>
+										<button type="button"
+												id="toggleChampScheduleBtn_@c"
+												class="btn btn-sm btn-outline-secondary schedule-edit-toggle flex-shrink-0"
+												data-target="champScheduleFields_@c"
+												title="Edit date/time and field"
+												aria-expanded="false"
+												aria-controls="champScheduleFields_@c">
+											<i class="bi bi-pencil-square" aria-hidden="true"></i>
+										</button>
+									</div>
+								</div>
+
+								<div id="champScheduleFields_@c" class="schedule-edit-fields mb-2 d-none">
+									<div class="row g-2">
+										<div class="col-12 col-md-6">
+											<label class="form-label form-label-sm mb-0" for="champNewDateTime_@c">Date/Time</label>
+											<input type="datetime-local"
+												   id="champNewDateTime_@c"
+												   name="ChampionshipScores[@c].NewScheduledDateTime"
+												   value="@(champ.ScheduledDateTime?.ToString("yyyy-MM-ddTHH:mm"))"
+												   class="form-control form-control-sm" />
+										</div>
+										<div class="col-12 col-md-6">
+											<label class="form-label form-label-sm mb-0" for="champNewLocation_@c">Field</label>
+											<input type="text"
+												   id="champNewLocation_@c"
+												   name="ChampionshipScores[@c].NewLocation"
+												   value="@champ.Location"
+												   class="form-control form-control-sm"
+												   maxlength="64"
+												   autocomplete="off" />
+										</div>
+									</div>
 								</div>
 
 								<div class="row g-2 align-items-center">
@@ -471,13 +539,46 @@ else
 								<span class="badge @(champ.Slot == BracketSlot.Championship ? "bg-warning text-dark" : "bg-success")">
 									@champ.SlotLabel
 								</span>
-								<small class="text-muted">
-									@(champ.ScheduledDateTime?.ToString("ddd, MMM d h:mm tt") ?? "Unscheduled")
-									@if (!string.IsNullOrWhiteSpace(champ.Location))
-									{
-										<span> &bull; @champ.Location</span>
-									}
-								</small>
+								<div class="d-flex align-items-center gap-1">
+									<small class="text-muted">
+										@(champ.ScheduledDateTime?.ToString("ddd, MMM d h:mm tt") ?? "Unscheduled")
+										@if (!string.IsNullOrWhiteSpace(champ.Location))
+										{
+											<span> &bull; @champ.Location</span>
+										}
+									</small>
+									<button type="button"
+											id="toggleBracketScheduleBtn_@c"
+											class="btn btn-sm btn-outline-secondary schedule-edit-toggle flex-shrink-0"
+											data-target="bracketScheduleFields_@c"
+											title="Edit date/time and field"
+											aria-expanded="false"
+											aria-controls="bracketScheduleFields_@c">
+										<i class="bi bi-pencil-square" aria-hidden="true"></i>
+									</button>
+								</div>
+							</div>
+							<div id="bracketScheduleFields_@c" class="schedule-edit-fields mb-2 d-none">
+								<div class="row g-2">
+									<div class="col-12 col-md-6">
+										<label class="form-label form-label-sm mb-0" for="bracketNewDateTime_@c">Date/Time</label>
+										<input type="datetime-local"
+											   id="bracketNewDateTime_@c"
+											   name="ChampionshipScores[@c].NewScheduledDateTime"
+											   value="@(champ.ScheduledDateTime?.ToString("yyyy-MM-ddTHH:mm"))"
+											   class="form-control form-control-sm" />
+									</div>
+									<div class="col-12 col-md-6">
+										<label class="form-label form-label-sm mb-0" for="bracketNewLocation_@c">Field</label>
+										<input type="text"
+											   id="bracketNewLocation_@c"
+											   name="ChampionshipScores[@c].NewLocation"
+											   value="@champ.Location"
+											   class="form-control form-control-sm"
+											   maxlength="64"
+											   autocomplete="off" />
+									</div>
+								</div>
 							</div>
 							<div class="row g-2 align-items-center">
 								<div class="col-12 col-md-4 fw-semibold">@champ.HomeDisplay</div>

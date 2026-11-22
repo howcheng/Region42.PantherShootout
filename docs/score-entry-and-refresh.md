@@ -24,20 +24,30 @@ Both are registered in `AddApplication()`.
 - Home/away goals must both be set or both cleared.
 - Forfeits require a **1–0** (or **0–1**) score.
 - Card counts cannot be negative.
+- Optional schedule edits: when `NewScheduledDateTime` is set and/or `NewLocation` is non-null, updates
+  `ScheduledDateTime` / `Location` in place (trimmed location; datetime compared at minute precision).
+  Null schedule fields leave the existing values unchanged (no game-status / makeup-game model).
 
 ### Championship (`SaveChampionshipScoreAsync`)
 - Requires both `HomeTeamId` and `AwayTeamId` already seeded.
 - Same goal-pair and forfeit rules as pool play (no cards on championship games).
+- Same optional `NewScheduledDateTime` / `NewLocation` in-place schedule updates as pool play.
+  Batch saves also allow schedule-only updates on **unseeded** bracket games (scores are still rejected until seeded).
 
 ### PSO (`SavePsoScoreAsync`)
 - Requires both teams assigned on the `ShootoutRound`.
 - Home/away PK goals both set or both cleared.
+- PSO rounds inherit date/time/field from the paired pool-play or championship game (no separate schedule fields).
 
 ### KFTM (`UpsertKftmOverrideAsync` / `RemoveKftmOverrideAsync`)
 - `Scope` is `PoolPlayStandings` or `PsoStandings` (independent).
 - `WinningTeamId` must be one of the two teams.
 - Team pair is normalized to `TeamAId < TeamBId` for upsert matching.
 - Remove deletes the override entity then refreshes.
+
+### Admin UI schedule edit
+- On `/Scores` entry cards, a pencil toggle reveals `datetime-local` + Field inputs bound to the batch POST.
+- Saving uses the same `SaveDivisionScoresBatchAsync` path as score edits (no separate endpoint).
 
 Every successful save path ends with `RefreshDivisionAsync(divisionId, saveChanges: true)`.
 

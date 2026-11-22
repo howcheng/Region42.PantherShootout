@@ -37,6 +37,12 @@
 			batchForm.addEventListener("submit", validateBatchScores);
 		}
 
+		document.querySelectorAll(".schedule-edit-toggle").forEach(function (button) {
+			button.addEventListener("click", function () {
+				toggleScheduleEditFields(button);
+			});
+		});
+
 		const deleteKftmForms = document.querySelectorAll(".remove-kftm-form");
 		deleteKftmForms.forEach(function (form) {
 			form.addEventListener("submit", function (event) {
@@ -45,6 +51,21 @@
 				}
 			});
 		});
+	}
+
+	function toggleScheduleEditFields(button) {
+		const targetId = button.getAttribute("data-target");
+		if (!targetId) {
+			return;
+		}
+
+		const scheduleFields = document.getElementById(targetId);
+		if (!scheduleFields) {
+			return;
+		}
+
+		const isHidden = scheduleFields.classList.toggle("d-none");
+		button.setAttribute("aria-expanded", isHidden ? "false" : "true");
 	}
 
 	function reloadFilterSelection() {
