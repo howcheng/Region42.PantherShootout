@@ -437,6 +437,55 @@ public sealed class TournamentDataContextAndRepositoryTests : IDisposable
 		Assert.IsType<GcsStorageWriteLock>(gcsScope.ServiceProvider.GetRequiredService<IStorageWriteLock>());
 	}
 
+	[Fact]
+	public async Task TeamVolunteerDeduction_PersistsAcrossContextsAndRestoresOnTransactionRollback()
+	{
+		var seedContext = CreateContext("admin@aysoregion42.org");
+		await seedContext.LoadAllAsync();
+
+		var year = new TournamentYear { Year = 2026, Name = "2026 Panther Shootout", IsActive = true };
+		seedContext.Add(year);
+
+		var division = new Division
+		{
+			TournamentYearId = year.Id,
+			AgeGroup = AgeGroup.U10,
+			Gender = Gender.Boys,
+			Name = "10U Boys",
+			Size = DivisionSize.Four,
+		};
+		seedContext.Add(division);
+
+		var pool = new Pool { DivisionId = division.Id, Name = "A" };
+		seedContext.Add(pool);
+
+		var hostTeam = new Team
+		{
+			PoolId = pool.Id,
+			TeamNumber = 1,
+			RegionNumber = Team.HostRegionNumber,
+			CoachName = "Oakman",
+			HasVolunteerPointDeduction = true,
+		};
+		seedContext.Add(hostTeam);
+		await seedContext.SaveChangesAsync();
+
+		var rehydratedContext = CreateContext("admin@aysoregion42.org");
+		await rehydratedContext.LoadAllAsync();
+		var loadedTeam = Assert.Single(rehydratedContext.Teams, t => t.Id == hostTeam.Id);
+		Assert.True(loadedTeam.HasVolunteerPointDeduction);
+
+		await using (var tx = await rehydratedContext.BeginTransactionAsync())
+		{
+			loadedTeam.HasVolunteerPointDeduction = false;
+			rehydratedContext.Update(loadedTeam);
+			await tx.RollbackAsync();
+		}
+
+		var rolledBackTeam = Assert.Single(rehydratedContext.Teams, t => t.Id == hostTeam.Id);
+		Assert.True(rolledBackTeam.HasVolunteerPointDeduction);
+	}
+
 	private sealed class FakeCurrentUserService(string userIdentifier) : ICurrentUserService
 	{
 		public string UserIdentifier { get; } = userIdentifier;

@@ -7,6 +7,8 @@ namespace Region42.PantherShootout.Domain.Entities;
 /// </summary>
 public class Team : AuditableEntity
 {
+	public const int HostRegionNumber = 42;
+
 	private string _name = string.Empty;
 
 	public int PoolId { get; set; }
@@ -33,6 +35,16 @@ public class Team : AuditableEntity
 	/// Head coach's last name (e.g. "Wright").
 	/// </summary>
 	public string CoachName { get; set; } = string.Empty;
+
+	/// <summary>
+	/// Whether 1 pool-play standings point is deducted for a host Region 42 team failing to meet volunteer requirements.
+	/// </summary>
+	public bool HasVolunteerPointDeduction { get; set; }
+
+	/// <summary>
+	/// True when this team belongs to host AYSO Region 42 (<see cref="HostRegionNumber"/>).
+	/// </summary>
+	public bool IsHostRegion => RegionNumber == HostRegionNumber;
 
 	/// <summary>
 	/// Formatted display name (<c>{RegionName}: {CoachName}</c> when discrete properties are populated,

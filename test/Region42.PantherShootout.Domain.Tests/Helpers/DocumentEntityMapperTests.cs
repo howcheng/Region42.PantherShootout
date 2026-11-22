@@ -183,5 +183,25 @@ public class DocumentEntityMapperTests
 		Assert.Equal(638, rehydratedTeam.RegionNumber);
 		Assert.Equal("Carper", rehydratedTeam.CoachName);
 		Assert.Equal("Quartz Hill: Carper", rehydratedTeam.Name);
+		Assert.False(rehydratedTeam.HasVolunteerPointDeduction);
+
+		var hostTeam = new Team
+		{
+			Id = 45,
+			PoolId = pool.Id,
+			Pool = pool,
+			TeamNumber = 1,
+			RegionNumber = Team.HostRegionNumber,
+			RegionName = "Newbury Park",
+			CoachName = "Oakman",
+			HasVolunteerPointDeduction = true,
+		};
+
+		var hostTeamDoc = DocumentEntityMapper.ToDocument(hostTeam);
+		Assert.True(hostTeamDoc.HasVolunteerPointDeduction);
+
+		var rehydratedHostTeam = DocumentEntityMapper.ToEntity(hostTeamDoc, pool.Id, pool);
+		Assert.True(rehydratedHostTeam.IsHostRegion);
+		Assert.True(rehydratedHostTeam.HasVolunteerPointDeduction);
 	}
 }

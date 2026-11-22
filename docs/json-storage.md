@@ -49,7 +49,7 @@ Document POCOs live in `src/Region42.PantherShootout.Domain/Documents/` and are 
 - Contains:
   - `schemaVersion`, `version`, `modifiedAt`, `modifiedBy`
   - `tournament`: `TournamentYear` metadata (`id`, `year`, `name`, `isActive`, `customMessage`)
-  - `divisions[]`: division config (`id`, `key`, `name`, `ageGroup`, `gender`, `size`, `customMessage`) -> `pools[]` (`id`, `name`) -> `teams[]` (`id`, `teamNumber`, `regionNumber`, `coachName`, `name`)
+  - `divisions[]`: division config (`id`, `key`, `name`, `ageGroup`, `gender`, `size`, `customMessage`) -> `pools[]` (`id`, `name`) -> `teams[]` (`id`, `teamNumber`, `regionNumber`, `coachName`, `name`, `hasVolunteerPointDeduction`)
 - **Single source of truth for team names**: Just like `season.json` in `ScoresStandings`, team names live only in `tournament.json`. Downstream game, bracket, shootout, override, and standings records reference teams strictly by integer `teamId` and resolve display names/designations (`A1`, etc.) in memory.
 
 ### `{year}/panther-shootout/{division-key}.json` (`DivisionDataDocument`)

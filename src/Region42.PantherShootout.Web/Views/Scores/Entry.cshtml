@@ -22,6 +22,13 @@
 	@if (Model.SelectedYear is not null && Model.SelectedDivision is not null)
 	{
 		<div class="d-flex flex-wrap align-items-center gap-2">
+			<a asp-controller="Admin"
+			   asp-action="Teams"
+			   asp-route-yearId="@Model.SelectedYear.Id"
+			   asp-route-division="@Model.SelectedDivision.DivisionKey"
+			   class="btn btn-sm btn-outline-secondary">
+				<i class="bi bi-people me-1" aria-hidden="true"></i>Edit Teams
+			</a>
 			<a href="/standings/@Model.SelectedYear.Year/@Model.SelectedDivision.DivisionKey/print"
 			   target="_blank"
 			   rel="noopener"

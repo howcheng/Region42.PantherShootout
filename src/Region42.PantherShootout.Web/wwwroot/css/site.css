@@ -146,3 +146,20 @@ html[data-bs-theme="dark"] .division-hub-card:focus {
   box-shadow: 0 0.35rem 0.75rem rgba(0, 0, 0, 0.5);
 }
 
+.admin-teams-table .col-team-code {
+  width: 72px;
+}
+
+.admin-teams-table .col-team-region {
+  min-width: 190px;
+}
+
+.admin-teams-table .col-team-coach {
+  min-width: 170px;
+}
+
+.admin-teams-table .col-team-volunteer {
+  min-width: 195px;
+}
+
+

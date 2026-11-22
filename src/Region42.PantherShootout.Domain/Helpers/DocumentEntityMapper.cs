@@ -132,6 +132,7 @@ public static class DocumentEntityMapper
 			RegionNumber = doc.RegionNumber,
 			CoachName = doc.CoachName ?? string.Empty,
 			Name = doc.Name,
+			HasVolunteerPointDeduction = doc.HasVolunteerPointDeduction,
 		};
 	}
 
@@ -146,6 +147,7 @@ public static class DocumentEntityMapper
 			RegionNumber = entity.RegionNumber,
 			CoachName = string.IsNullOrWhiteSpace(entity.CoachName) ? null : entity.CoachName,
 			Name = entity.Name,
+			HasVolunteerPointDeduction = entity.HasVolunteerPointDeduction,
 		};
 	}
 

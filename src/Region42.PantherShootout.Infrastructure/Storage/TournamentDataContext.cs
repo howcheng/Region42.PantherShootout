@@ -1406,6 +1406,7 @@ public class TournamentDataContext : ITournamentDataContext
 		RegionName = entity.RegionName,
 		CoachName = entity.CoachName,
 		Name = entity.Name,
+		HasVolunteerPointDeduction = entity.HasVolunteerPointDeduction,
 		CreatedAt = entity.CreatedAt,
 		CreatedBy = entity.CreatedBy,
 		ModifiedAt = entity.ModifiedAt,

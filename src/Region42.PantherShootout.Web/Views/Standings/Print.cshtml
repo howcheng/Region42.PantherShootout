@@ -32,6 +32,10 @@
 				</a>
 				@if (User.Identity?.IsAuthenticated == true)
 				{
+					<a href="/Admin/Teams?yearId=@Model.SelectedYear.Id&amp;division=@Model.SelectedDivision.DivisionKey"
+					   class="btn btn-sm btn-outline-secondary">
+						<i class="bi bi-people me-1" aria-hidden="true"></i>Edit Teams
+					</a>
 					<a href="/Scores?year=@Model.SelectedYear.Year&amp;division=@Model.SelectedDivision.DivisionKey"
 					   class="btn btn-sm btn-outline-secondary">
 						<i class="bi bi-pencil-square me-1" aria-hidden="true"></i>Enter Scores
@@ -219,6 +223,10 @@
 													{
 														<span class="print-flag flag-forf">FORF</span>
 													}
+													@if (r.HasVolunteerPointDeduction)
+													{
+														<span class="print-flag flag-vol" title="1 point deducted (Region 42 volunteer requirement)">-1 VOL</span>
+													}
 												</div>
 											</td>
 											<td class="col-stat text-center tabular-nums">@r.GamesPlayed</td>
@@ -385,6 +393,10 @@
 							@if (Model.HasFourthShootoutRound)
 							{
 								<span> &bull; <strong>4th PSO Round:</strong> Score does not count if a team already got 3 turns.</span>
+							}
+							@if (sheet.StandingsRows.Any(x => x.Standing.HasVolunteerPointDeduction))
+							{
+								<span> &bull; <strong>-1 VOL:</strong> 1 pt Region 42 volunteer deduction.</span>
 							}
 							@if (sheet.AnyForfeitInScope)
 							{

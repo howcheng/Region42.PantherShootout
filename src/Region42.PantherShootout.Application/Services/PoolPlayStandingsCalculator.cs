@@ -14,6 +14,7 @@ namespace Region42.PantherShootout.Application.Services;
 /// <item>+1 shutout bonus when GA == 0 (not awarded on forfeits)</item>
 /// <item>Forfeit winner scored as 1-0 = 7 points (no shutout)</item>
 /// <item>−1 per yellow card, −2 per red card</item>
+/// <item>−1 for host AYSO Region 42 volunteer requirement deduction (applied immediately per team)</item>
 /// <item>Tiebreakers: 2-way H2H → Wins (nullified if any forfeit in scope) → RC then YC →
 /// non-forfeit capped GA → non-forfeit capped GD (nullified if any forfeit in scope) → KFTM</item>
 /// </list>
@@ -28,6 +29,7 @@ public static class PoolPlayStandingsCalculator
 	public const int ForfeitWinPoints = 7;
 	public const int RedCardDeduction = 2;
 	public const int YellowCardDeduction = 1;
+	public const int VolunteerPointDeduction = 1;
 
 	/// <summary>
 	/// Calculates standings for a single pool.
@@ -280,6 +282,8 @@ public static class PoolPlayStandingsCalculator
 		Team team,
 		List<PoolPlayGame> completedGames)
 	{
+		var hasVolunteerDeduction = team.IsHostRegion && team.HasVolunteerPointDeduction;
+
 		var dto = new PoolPlayStandingDto
 		{
 			TeamId = team.Id,
@@ -291,7 +295,13 @@ public static class PoolPlayStandingsCalculator
 			PoolId = team.PoolId,
 			PoolName = team.Pool?.Name ?? string.Empty,
 			TeamNumber = team.TeamNumber,
+			HasVolunteerPointDeduction = hasVolunteerDeduction,
 		};
+
+		if (hasVolunteerDeduction)
+		{
+			dto.Points -= VolunteerPointDeduction;
+		}
 
 		var teamGames = completedGames
 			.Where(g => g.HomeTeamId == team.Id || g.AwayTeamId == team.Id)
@@ -544,5 +554,6 @@ public static class PoolPlayStandingsCalculator
 		YellowCards = source.YellowCards,
 		RedCards = source.RedCards,
 		HasForfeit = source.HasForfeit,
+		HasVolunteerPointDeduction = source.HasVolunteerPointDeduction,
 	};
 }

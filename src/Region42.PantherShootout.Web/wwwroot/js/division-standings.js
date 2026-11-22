@@ -116,6 +116,12 @@
 			forfeitNotice.classList.toggle("d-none", !hasForfeit);
 		}
 
+		const volunteerNotice = document.getElementById("statsModalVolunteerNotice");
+		if (volunteerNotice) {
+			const hasVolunteerDeduction = btn.getAttribute("data-volunteer-deduction") === "true";
+			volunteerNotice.classList.toggle("d-none", !hasVolunteerDeduction);
+		}
+
 		globalThis.bootstrap.Modal.getOrCreateInstance(modalEl).show();
 	}
 

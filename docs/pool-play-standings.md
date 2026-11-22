@@ -44,8 +44,9 @@ A game counts toward standings only when **both** `HomeGoals` and `AwayGoals` ar
 | Forfeit loser | 0 |
 | Yellow card | −1 each (summed across the team's games) |
 | Red card | −2 each |
+| Region 42 volunteer deduction | −1 per team (when `Team.RegionNumber == 42` and `Team.HasVolunteerPointDeduction == true`; takes effect immediately even at `0 GP`) |
 
-Standings `Points` = sum of per-game contributions across all of the team's completed pool games.
+Standings `Points` = sum of per-game contributions across all of the team's completed pool games, minus any Region 42 volunteer deduction.
 
 ### Display stats vs. tiebreaker helpers
 
@@ -57,6 +58,7 @@ Both sets of values are calculated and stored:
 | `CappedGoalsAgainst` | Sum of per-game `min(GA, 3)` over **non-forfeit** games only. |
 | `CappedGoalDifferential` | Sum of `min(GF, 3) − min(GA, 3)` over **non-forfeit** games only. |
 | `HasForfeit` | True if any of the team's completed games was a forfeit. |
+| `HasVolunteerPointDeduction` | True when a host Region 42 team has the −1 volunteer point deduction applied (`-1 VOL` badge on public standings and print sheets). |
 
 Forfeit games still update uncapped `GF`/`GA`/`GD` and W/L, but are excluded from the capped
 tiebreaker totals.
