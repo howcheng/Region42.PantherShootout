@@ -19,6 +19,16 @@ public class PoolPlayScoreUpdateDto
 	public int AwayYellowCards { get; set; }
 
 	public int AwayRedCards { get; set; }
+
+	/// <summary>
+	/// When set, updates the game's scheduled wall-clock date/time. Null leaves the existing value unchanged.
+	/// </summary>
+	public DateTime? NewScheduledDateTime { get; set; }
+
+	/// <summary>
+	/// When non-null, updates the game's field/location (trimmed). Null leaves the existing value unchanged.
+	/// </summary>
+	public string? NewLocation { get; set; }
 }
 
 public class ChampionshipScoreUpdateDto
@@ -30,6 +40,16 @@ public class ChampionshipScoreUpdateDto
 	public int? AwayGoals { get; set; }
 
 	public bool IsForfeit { get; set; }
+
+	/// <summary>
+	/// When set, updates the game's scheduled wall-clock date/time. Null leaves the existing value unchanged.
+	/// </summary>
+	public DateTime? NewScheduledDateTime { get; set; }
+
+	/// <summary>
+	/// When non-null, updates the game's field/location (trimmed). Null leaves the existing value unchanged.
+	/// </summary>
+	public string? NewLocation { get; set; }
 }
 
 public class PsoScoreUpdateDto
