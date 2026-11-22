@@ -60,9 +60,12 @@ else
 								<p class="text-muted small fst-italic mb-2">No active bulletin message.</p>
 							}
 						</div>
-						<div class="d-flex gap-2 mt-2">
+						<div class="d-flex flex-wrap gap-2 mt-2">
 							<a asp-action="EditDivision" asp-route-id="@div.Id" class="btn btn-sm btn-outline-primary">
 								<i class="bi bi-pencil me-1" aria-hidden="true"></i>Edit Bulletin
+							</a>
+							<a asp-action="Teams" asp-route-yearId="@div.TournamentYearId" asp-route-division="@div.DivisionKey" class="btn btn-sm btn-outline-secondary">
+								<i class="bi bi-people me-1" aria-hidden="true"></i>Edit Teams
 							</a>
 							<a href="/standings/@div.Year/@div.DivisionKey" class="btn btn-sm btn-outline-secondary">
 								View Page

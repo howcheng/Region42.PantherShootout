@@ -307,7 +307,15 @@ public sealed partial class WebPipelineTests : IDisposable
 			var poolG = new Pool { DivisionId = division.Id, Name = "G" };
 			dataContext.Add(poolG);
 
-			var g1 = new Team { PoolId = poolG.Id, TeamNumber = 1, RegionNumber = 42, RegionName = "Newbury Park", CoachName = "Alpha" };
+			var g1 = new Team
+			{
+				PoolId = poolG.Id,
+				TeamNumber = 1,
+				RegionNumber = 42,
+				RegionName = "Newbury Park",
+				CoachName = "Alpha",
+				HasVolunteerPointDeduction = true,
+			};
 			var g2 = new Team { PoolId = poolG.Id, TeamNumber = 2, RegionNumber = 9, RegionName = "Thousand Oaks", CoachName = "Bravo" };
 			var g3 = new Team { PoolId = poolG.Id, TeamNumber = 3, RegionNumber = 121, RegionName = "Simi Valley", CoachName = "Charlie" };
 			var g4 = new Team { PoolId = poolG.Id, TeamNumber = 4, RegionNumber = 4, RegionName = "Agoura", CoachName = "Delta" };
@@ -348,6 +356,8 @@ public sealed partial class WebPipelineTests : IDisposable
 		Assert.DoesNotContain("style=\"", printHtml, StringComparison.OrdinalIgnoreCase);
 		Assert.Contains("G1 no count*", printHtml);
 		Assert.Contains("4th PSO Round:", printHtml);
+		Assert.Contains("-1 VOL", printHtml);
+		Assert.Contains("1 pt Region 42 volunteer deduction", printHtml);
 
 		using var screenResp = await client.GetAsync("/standings/2026/12u-girls");
 		Assert.Equal(HttpStatusCode.OK, screenResp.StatusCode);
@@ -355,6 +365,8 @@ public sealed partial class WebPipelineTests : IDisposable
 		Assert.DoesNotContain("style=\"", screenHtml, StringComparison.OrdinalIgnoreCase);
 		Assert.Contains("G1 score does not count (already had 3 turns)", screenHtml);
 		Assert.Contains("4th Shootout Round:", screenHtml);
+		Assert.Contains("-1 VOL", screenHtml);
+		Assert.Contains("1 point deducted (Region 42 volunteer requirement)", screenHtml);
 
 		using var psoResp = await client.GetAsync("/shootout/2026?division=12u-girls");
 		Assert.Equal(HttpStatusCode.OK, psoResp.StatusCode);
@@ -367,6 +379,7 @@ public sealed partial class WebPipelineTests : IDisposable
 	[InlineData("/Scores")]
 	[InlineData("/Import/Upload")]
 	[InlineData("/Admin/Years")]
+	[InlineData("/Admin/Teams")]
 	[InlineData("/Admin/Divisions")]
 	[InlineData("/Admin/Regions")]
 	public async Task AdminRoutes_WhenAnonymous_ChallengeGoogleOAuthEndpoint(string path)

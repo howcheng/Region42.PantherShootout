@@ -107,6 +107,101 @@ public class PoolPlayStandingsCalculatorTests
 	}
 
 	[Fact]
+	public void CalculatePool_Region42VolunteerDeduction_Deducts1PointImmediatelyAndIgnoresNonHostRegions()
+	{
+		var pool = CreatePool(1, "A");
+		var teams = new List<Team>
+		{
+			new()
+			{
+				Id = 1,
+				PoolId = pool.Id,
+				Pool = pool,
+				TeamNumber = 1,
+				RegionNumber = Team.HostRegionNumber,
+				RegionName = "Newbury Park",
+				CoachName = "Oakman",
+				HasVolunteerPointDeduction = true,
+			},
+			new()
+			{
+				Id = 2,
+				PoolId = pool.Id,
+				Pool = pool,
+				TeamNumber = 2,
+				RegionNumber = 121,
+				RegionName = "Simi Valley",
+				CoachName = "Wright",
+				HasVolunteerPointDeduction = true, // non-Region-42 must be ignored
+			},
+		};
+		pool.Teams = teams;
+
+		// Before any games are played (0 GP): Region 42 team starts at -1 PTS, visiting team stays at 0 PTS
+		var zeroGamesResult = PoolPlayStandingsCalculator.CalculatePool(teams, []);
+		var hostZeroGp = zeroGamesResult.Standings.Single(s => s.TeamId == 1);
+		var visitorZeroGp = zeroGamesResult.Standings.Single(s => s.TeamId == 2);
+		Assert.Equal(-1, hostZeroGp.Points);
+		Assert.True(hostZeroGp.HasVolunteerPointDeduction);
+		Assert.Equal(0, visitorZeroGp.Points);
+		Assert.False(visitorZeroGp.HasVolunteerPointDeduction);
+
+		// After 2 completed games (2-0 win = 9 pts + 1-1 draw = 4 pts = 13 pts, minus 1 once = 12 pts)
+		var games = new List<PoolPlayGame>
+		{
+			CreateGame(1, pool.Id, 1, 2, 2, 0, round: 1),
+			CreateGame(2, pool.Id, 2, 1, 1, 1, round: 2),
+		};
+		var playedResult = PoolPlayStandingsCalculator.CalculatePool(teams, games);
+		var hostPlayed = playedResult.Standings.Single(s => s.TeamId == 1);
+		var visitorPlayed = playedResult.Standings.Single(s => s.TeamId == 2);
+		Assert.Equal(12, hostPlayed.Points);
+		Assert.True(hostPlayed.HasVolunteerPointDeduction);
+		Assert.Equal(4, visitorPlayed.Points);
+		Assert.False(visitorPlayed.HasVolunteerPointDeduction);
+	}
+
+	[Fact]
+	public void CalculateDivision_TwelveTeamSubRankingsAndSnapshot_PreserveVolunteerPointDeduction()
+	{
+		var division = new Division { Id = 10, Name = "12U Boys", Size = DivisionSize.Twelve };
+		var poolA = CreatePool(1, "A", division.Id);
+		var poolB = CreatePool(2, "B", division.Id);
+		var poolC = CreatePool(3, "C", division.Id);
+
+		var teamsA = CreateTeams(poolA, count: 4, startingTeamId: 101);
+		var teamsB = CreateTeams(poolB, count: 4, startingTeamId: 201);
+		var teamsC = CreateTeams(poolC, count: 4, startingTeamId: 301);
+
+		teamsA[0].RegionNumber = Team.HostRegionNumber;
+		teamsA[0].RegionName = "Newbury Park";
+		teamsA[0].CoachName = "Oakman";
+		teamsA[0].HasVolunteerPointDeduction = true;
+
+		var allGames = new List<PoolPlayGame>();
+		allGames.AddRange(CreateRoundRobinShutouts(poolA, teamsA, division.Id));
+		allGames.AddRange(CreateRoundRobinShutouts(poolB, teamsB, division.Id));
+		allGames.AddRange(CreateRoundRobinShutouts(poolC, teamsC, division.Id));
+
+		var result = PoolPlayStandingsCalculator.CalculateDivision(
+			division,
+			[poolA, poolB, poolC],
+			[.. teamsA, .. teamsB, .. teamsC],
+			allGames);
+
+		Assert.NotNull(result.PoolWinnersStandings);
+		var poolAWinner = result.PoolWinnersStandings!.Standings.Single(s => s.TeamId == teamsA[0].Id);
+		// 3x (1-0 win = 8 pts) = 24 pts - 1 volunteer deduction = 23 pts, while B1 & C1 have 24 pts
+		Assert.Equal(23, poolAWinner.Points);
+		Assert.Equal(3, poolAWinner.Rank);
+		Assert.True(poolAWinner.HasVolunteerPointDeduction);
+
+		var snapshot = PoolPlayStandingsSnapshotMapper.ToSnapshot(result);
+		Assert.True(snapshot.Pools[0].Teams.Single(t => t.TeamId == teamsA[0].Id).HasVolunteerPointDeduction);
+		Assert.True(snapshot.PoolWinnersStandings!.Teams.Single(t => t.TeamId == teamsA[0].Id).HasVolunteerPointDeduction);
+	}
+
+	[Fact]
 	public void CalculatePool_TwoWayTie_UsesHeadToHeadFirst()
 	{
 		var pool = CreatePool(1, "A");

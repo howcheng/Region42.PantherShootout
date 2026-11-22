@@ -46,6 +46,10 @@
 		</a>
 		@if (User.Identity?.IsAuthenticated == true)
 		{
+			<a href="/Admin/Teams?yearId=@Model.SelectedYear.Id&amp;division=@Model.SelectedDivision.DivisionKey"
+			   class="btn btn-sm btn-outline-secondary">
+				<i class="bi bi-people me-1" aria-hidden="true"></i>Edit Teams
+			</a>
 			<a href="/Scores?year=@Model.SelectedYear.Year&amp;division=@Model.SelectedDivision.DivisionKey"
 			   class="btn btn-sm btn-outline-primary">
 				<i class="bi bi-pencil-square me-1" aria-hidden="true"></i>Enter Scores
@@ -187,7 +191,7 @@
 
 		<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2 small text-muted">
 			<div>
-				<strong>10-Point System:</strong> Win = 6, Draw = 3, Loss = 0, +1/goal (max 3), +1 shutout (not on forfeits), YC = &minus;1, RC = &minus;2.
+				<strong>10-Point System:</strong> Win = 6, Draw = 3, Loss = 0, +1/goal (max 3), +1 shutout (not on forfeits), YC = &minus;1, RC = &minus;2, Region 42 volunteer deduction = &minus;1.
 				<button type="button" class="btn btn-sm btn-link p-0 ms-1 align-baseline" data-bs-toggle="modal" data-bs-target="#pointsRulesLegendModal">
 					Tiebreaker rules
 				</button>
@@ -270,9 +274,13 @@
 						</tr>
 					</tbody>
 				</table>
-				<div id="statsModalForfeitNotice" class="alert alert-warning py-2 small mb-0 d-none">
+				<div id="statsModalForfeitNotice" class="alert alert-warning py-2 small mb-2 d-none">
 					<i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>
 					Includes a forfeit game (scored 1&ndash;0 = 7 pts, no shutout bonus).
+				</div>
+				<div id="statsModalVolunteerNotice" class="alert alert-danger py-2 small mb-0 d-none">
+					<i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>
+					Includes a &minus;1 point Region 42 volunteer requirement deduction.
 				</div>
 			</div>
 		</div>
@@ -295,6 +303,7 @@
 					<li><strong>Shutout:</strong> +1 bonus point if opponent scored 0 goals (not awarded on forfeits; a 0&ndash;0 draw earns 4 pts per team)</li>
 					<li><strong>Forfeit:</strong> Recorded as 1&ndash;0 = 7 points (6 win + 1 goal, no shutout)</li>
 					<li><strong>Misconduct Deductions:</strong> &minus;1 point per Yellow Card, &minus;2 points per Red Card</li>
+					<li><strong>Region 42 Volunteer Deduction:</strong> &minus;1 standings point if a host Region 42 team does not fulfill its volunteer requirement</li>
 				</ul>
 				<hr />
 				<h3 class="h6 fw-bold">6-Step Pool Tiebreaker Order</h3>

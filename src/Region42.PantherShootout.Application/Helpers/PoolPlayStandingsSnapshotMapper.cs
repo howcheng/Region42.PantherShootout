@@ -66,6 +66,7 @@ public static class PoolPlayStandingsSnapshotMapper
 		YellowCards = standing.YellowCards,
 		RedCards = standing.RedCards,
 		HasForfeit = standing.HasForfeit,
+		HasVolunteerPointDeduction = standing.HasVolunteerPointDeduction,
 	};
 
 	private static int? ResolveChampionTeamId(DivisionPoolPlayStandingsResult result)

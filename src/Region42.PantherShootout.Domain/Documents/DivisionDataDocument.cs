@@ -209,6 +209,8 @@ public class TeamPoolStandingDocument
 	public int RedCards { get; set; }
 
 	public bool HasForfeit { get; set; }
+
+	public bool HasVolunteerPointDeduction { get; set; }
 }
 
 public class PsoStandingsSnapshotDocument

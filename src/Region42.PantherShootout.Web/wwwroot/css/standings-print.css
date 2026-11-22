@@ -331,6 +331,12 @@
   color: #fff;
 }
 
+.print-flag.flag-vol {
+  background-color: #f8d7da;
+  color: #842029;
+  border-color: #842029;
+}
+
 /* Games Table Column Proportions */
 .print-games-table .col-game-rnd {
   width: 5.5%;

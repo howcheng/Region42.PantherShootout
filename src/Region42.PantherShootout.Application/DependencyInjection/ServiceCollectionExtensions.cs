@@ -18,6 +18,7 @@ public static class ServiceCollectionExtensions
 		services.AddScoped<IAysoRegionService, AysoRegionService>();
 		services.AddScoped<IScheduleImportService, ScheduleImportService>();
 		services.AddScoped<ITournamentYearService, TournamentYearService>();
+		services.AddScoped<ITeamAdminService, TeamAdminService>();
 
 		return services;
 	}

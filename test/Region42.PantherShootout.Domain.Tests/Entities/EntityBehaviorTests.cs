@@ -35,6 +35,20 @@ public class EntityBehaviorTests
 
 		team.RegionName = "Quartz Hill";
 		Assert.Equal("Quartz Hill: Carper", team.Name);
+		Assert.False(team.IsHostRegion);
+
+		var hostTeam = new Team
+		{
+			Id = 6,
+			PoolId = 1,
+			Pool = pool,
+			TeamNumber = 1,
+			RegionNumber = Team.HostRegionNumber,
+			RegionName = "Newbury Park",
+			CoachName = "Oakman",
+		};
+		Assert.True(hostTeam.IsHostRegion);
+		Assert.False(hostTeam.HasVolunteerPointDeduction);
 	}
 
 	[Theory]

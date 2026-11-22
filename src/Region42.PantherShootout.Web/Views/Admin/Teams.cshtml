@@ -1,0 +1,221 @@
+@model Region42.PantherShootout.Web.Models.AdminTeamsViewModel
+@using Region42.PantherShootout.Domain.Entities
+@{
+	ViewData["Title"] = string.IsNullOrWhiteSpace(Model.SelectedDivisionName)
+		? "Edit Teams"
+		: $"Edit Teams — {Model.SelectedDivisionName}";
+	var poolColClass = Model.Pools.Count switch
+	{
+		1 => "col-12",
+		2 => "col-12 col-xl-6",
+		_ => "col-12",
+	};
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+	<div>
+		<h1 class="h3 mb-1">Edit Division Teams</h1>
+		<p class="text-muted small mb-0">
+			Fix AYSO region numbers or coach name spellings, and manage the &minus;1 point volunteer deduction for AYSO Region @Team.HostRegionNumber teams. Team codes are fixed by schedule assignment.
+		</p>
+	</div>
+
+	<div class="d-flex flex-wrap align-items-center gap-2">
+		<a asp-controller="Admin" asp-action="Regions" class="btn btn-sm btn-outline-secondary">
+			<i class="bi bi-geo-alt me-1" aria-hidden="true"></i>Manage AYSO Regions
+		</a>
+		@if (Model.SelectedYear > 0 && !string.IsNullOrWhiteSpace(Model.SelectedDivisionKey))
+		{
+			<a href="/standings/@Model.SelectedYear/@Model.SelectedDivisionKey" class="btn btn-sm btn-outline-secondary">
+				<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Public @Model.SelectedDivisionShortCode Standings
+			</a>
+		}
+	</div>
+</div>
+
+@if (Model.Years.Count == 0 || Model.Divisions.Count == 0)
+{
+	<div class="alert alert-info">
+		<i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+		No imported divisions found @(string.IsNullOrWhiteSpace(Model.SelectedYearName) ? "yet" : $"for {Model.SelectedYearName}").
+		<a asp-controller="Import" asp-action="Upload">Import a schedule workbook</a> first.
+	</div>
+
+	@if (Model.Years.Count > 1)
+	{
+		<div class="col-12 col-sm-6 col-md-4">
+			<label for="adminTeamsYearSelect" class="form-label small fw-semibold mb-1">Tournament Year</label>
+			<select id="adminTeamsYearSelect" class="form-select form-select-sm" data-division-key="">
+				@foreach (var y in Model.Years)
+				{
+					<option value="@y.Id" selected="@(y.Id == Model.SelectedTournamentYearId)">@y.Name</option>
+				}
+			</select>
+		</div>
+	}
+}
+else
+{
+	<div class="card mb-3">
+		<div class="card-body py-2">
+			<div class="row g-2 align-items-end">
+				@if (Model.Years.Count > 1)
+				{
+					<div class="col-12 col-md-4">
+						<label for="adminTeamsYearSelect" class="form-label small fw-semibold mb-1">Tournament Year</label>
+						<select id="adminTeamsYearSelect"
+								class="form-select form-select-sm"
+								data-division-key="@Model.SelectedDivisionKey">
+							@foreach (var y in Model.Years)
+							{
+								<option value="@y.Id" selected="@(y.Id == Model.SelectedTournamentYearId)">@y.Name</option>
+							}
+						</select>
+					</div>
+				}
+				else
+				{
+					<input type="hidden" id="adminTeamsYearSelect" value="@Model.SelectedTournamentYearId" />
+				}
+
+				<div class="col-12 col-md-8">
+					<label for="adminTeamsDivisionSelect" class="form-label small fw-semibold mb-1">Division</label>
+					<select id="adminTeamsDivisionSelect" class="form-select form-select-sm">
+						@foreach (var d in Model.Divisions)
+						{
+							<option value="@d.DivisionKey" selected="@(d.Id == Model.SelectedDivisionId)">
+								@d.Name (@d.TeamCount Teams &bull; @d.PoolCount @(d.PoolCount == 1 ? "Pool" : "Pools"))
+							</option>
+						}
+					</select>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	@if (!ViewData.ModelState.IsValid)
+	{
+		<div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+	}
+
+	<form method="post" asp-action="SaveTeams" id="adminTeamsForm">
+		<input type="hidden" asp-for="SelectedTournamentYearId" />
+		<input type="hidden" asp-for="SelectedDivisionId" />
+
+		<div class="row g-3">
+			@foreach (var pool in Model.Pools)
+			{
+				<div class="@poolColClass">
+					<div class="card h-100">
+						<div class="card-header d-flex justify-content-between align-items-center py-2">
+							<h2 class="h6 mb-0 fw-bold">
+								@(Model.Pools.Count == 1 ? $"{Model.SelectedDivisionName} Teams" : $"Pool {pool.PoolName}")
+							</h2>
+							<span class="badge bg-secondary-subtle text-secondary-emphasis">
+								@pool.TeamIndices.Count Teams
+							</span>
+						</div>
+						<div class="card-body p-0">
+							<div class="table-responsive">
+								<table class="table table-hover align-middle mb-0 admin-teams-table">
+									<thead>
+										<tr>
+											<th class="col-team-code">Code</th>
+											<th class="col-team-region">AYSO Region</th>
+											<th class="col-team-coach">Coach Name</th>
+											<th class="col-team-volunteer">Region @Team.HostRegionNumber Volunteer</th>
+										</tr>
+									</thead>
+									<tbody>
+										@foreach (var i in pool.TeamIndices)
+										{
+											var row = Model.Teams[i];
+											var isHostRegion = row.RegionNumber == Team.HostRegionNumber;
+											var switchId = $"volunteerSwitch_{row.TeamId}";
+											var previewName = !string.IsNullOrWhiteSpace(row.RegionName)
+												? $"{row.RegionName}: {row.CoachName}"
+												: row.CoachName;
+
+											<tr class="admin-team-row" data-team-code="@row.Code">
+												<td>
+													<input type="hidden" asp-for="Teams[i].TeamId" />
+													<input type="hidden" asp-for="Teams[i].Code" />
+													<span class="badge bg-dark fs-6 font-monospace" title="Team code is read-only">@row.Code</span>
+												</td>
+												<td>
+													<label class="visually-hidden" asp-for="Teams[i].RegionNumber">AYSO Region for @row.Code</label>
+													<select asp-for="Teams[i].RegionNumber"
+															class="form-select form-select-sm team-region-select"
+															required>
+														@if (!Model.Regions.Any(r => r.RegionNumber == row.RegionNumber) && row.RegionNumber > 0)
+														{
+															<option value="@row.RegionNumber" data-region-name="Region @row.RegionNumber" selected>
+																@row.RegionNumber &mdash; (Unregistered)
+															</option>
+														}
+														@foreach (var region in Model.Regions)
+														{
+															<option value="@region.RegionNumber"
+																	data-region-name="@region.Name"
+																	selected="@(region.RegionNumber == row.RegionNumber)">
+																@region.RegionNumber &mdash; @region.Name
+															</option>
+														}
+													</select>
+													<span asp-validation-for="Teams[i].RegionNumber" class="text-danger small d-block"></span>
+												</td>
+												<td>
+													<label class="visually-hidden" asp-for="Teams[i].CoachName">Coach Name for @row.Code</label>
+													<input asp-for="Teams[i].CoachName"
+														   class="form-control form-control-sm team-coach-input"
+														   maxlength="100"
+														   placeholder="Coach last name"
+														   required />
+													<div class="form-text small text-truncate mb-0 team-display-preview" title="@previewName">
+														Displays as: <strong class="team-preview-text">@previewName</strong>
+													</div>
+													<span asp-validation-for="Teams[i].CoachName" class="text-danger small d-block"></span>
+												</td>
+												<td>
+													<div class="form-check form-switch volunteer-deduction-wrap @(isHostRegion ? "" : "d-none")">
+														<input asp-for="Teams[i].HasVolunteerPointDeduction"
+															   class="form-check-input volunteer-deduction-checkbox"
+															   type="checkbox"
+															   role="switch"
+															   id="@switchId"
+															   disabled="@(!isHostRegion ? "disabled" : null)" />
+														<label class="form-check-label small fw-semibold text-danger-emphasis" for="@switchId">
+															&minus;1 Pt Deduction
+														</label>
+													</div>
+													<span class="text-muted small volunteer-nonhost-note @(isHostRegion ? "d-none" : "")">
+														Region @Team.HostRegionNumber only
+													</span>
+												</td>
+											</tr>
+										}
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			}
+		</div>
+
+		<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+			<div class="small text-muted">
+				<i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+				Saving recalculates division pool-play standings, championship bracket seedings, and printable pool sheets immediately.
+			</div>
+			<button type="submit" class="btn btn-primary">
+				<i class="bi bi-save me-1" aria-hidden="true"></i>Save Team Changes
+			</button>
+		</div>
+	</form>
+}
+
+@section Scripts {
+	<partial name="_ValidationScriptsPartial" />
+	<script src="~/js/admin-teams.js" asp-append-version="true"></script>
+}
