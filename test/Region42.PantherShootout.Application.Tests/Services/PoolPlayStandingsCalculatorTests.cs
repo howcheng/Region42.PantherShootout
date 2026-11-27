@@ -32,7 +32,51 @@ public class PoolPlayStandingsCalculatorTests
 		Assert.Equal(3, winner.CappedGoalDifferential); // capped GF 3 - GA 0
 		Assert.Equal(0, loser.Points);
 		Assert.Equal(4, loser.GoalsAgainst);
-		Assert.Equal(3, loser.CappedGoalsAgainst); // capped at 3 for TB
+		Assert.Equal(4, loser.CappedGoalsAgainst); // 4 < 5, so uncapped for TB GA
+		Assert.Equal(-4, loser.CappedGoalDifferential); // capped GF 0 - GA 4
+	}
+
+	[Fact]
+	public void CalculatePool_SevenToZeroWin_CapsTiebreakerGaAtFivePerGame()
+	{
+		var pool = CreatePool(1, "A");
+		var teams = CreateTeams(pool, count: 2);
+		var games = new List<PoolPlayGame>
+		{
+			CreateGame(1, pool.Id, teams[0].Id, teams[1].Id, 7, 0),
+		};
+
+		var result = PoolPlayStandingsCalculator.CalculatePool(teams, games);
+
+		var winner = result.Standings.Single(s => s.TeamId == teams[0].Id);
+		var loser = result.Standings.Single(s => s.TeamId == teams[1].Id);
+
+		Assert.Equal(7, winner.GoalsFor);
+		Assert.Equal(0, winner.CappedGoalsAgainst);
+		Assert.Equal(3, winner.CappedGoalDifferential); // min(GF, 3) - min(GA, 5) = 3 - 0
+		Assert.Equal(7, loser.GoalsAgainst);
+		Assert.Equal(5, loser.CappedGoalsAgainst); // per-game GA capped at 5
+		Assert.Equal(-5, loser.CappedGoalDifferential); // 0 - 5
+	}
+
+	[Fact]
+	public void CalculatePool_MultipleBlowouts_AppliesFiveCapPerGameNotAsTotalMax()
+	{
+		var pool = CreatePool(1, "A");
+		var teams = CreateTeams(pool, count: 3);
+		// Team 1 loses 6-0 twice → TB GA is 5+5=10, not capped at a total of 5
+		var games = new List<PoolPlayGame>
+		{
+			CreateGame(1, pool.Id, teams[1].Id, teams[0].Id, 6, 0),
+			CreateGame(2, pool.Id, teams[2].Id, teams[0].Id, 6, 0),
+		};
+
+		var result = PoolPlayStandingsCalculator.CalculatePool(teams, games);
+
+		var team1 = result.Standings.Single(s => s.TeamId == teams[0].Id);
+		Assert.Equal(12, team1.GoalsAgainst);
+		Assert.Equal(10, team1.CappedGoalsAgainst);
+		Assert.Equal(-10, team1.CappedGoalDifferential);
 	}
 
 	[Fact]

@@ -55,8 +55,8 @@ Both sets of values are calculated and stored:
 | Field | Meaning |
 |---|---|
 | `GoalsFor` / `GoalsAgainst` / `GoalDifferential` | Uncapped totals for the standings table (`GF` / `GA` / `GD`). |
-| `CappedGoalsAgainst` | Sum of per-game `min(GA, 3)` over **non-forfeit** games only. |
-| `CappedGoalDifferential` | Sum of `min(GF, 3) − min(GA, 3)` over **non-forfeit** games only. |
+| `CappedGoalsAgainst` | Sum of per-game `min(GA, 5)` over **non-forfeit** games only. |
+| `CappedGoalDifferential` | Sum of `min(GF, 3) − min(GA, 5)` over **non-forfeit** games only. |
 | `HasForfeit` | True if any of the team's completed games was a forfeit. |
 | `HasVolunteerPointDeduction` | True when a host Region 42 team has the −1 volunteer point deduction applied (`-1 VOL` badge on public standings and print sheets). |
 
@@ -75,8 +75,9 @@ Primary sort key is **Points** (descending). Teams tied on points are broken in 
 2. **Games won** (descending) — **nullified** (treated equal for everyone) if any forfeit exists
    in the ranking **scope** (see §4).
 3. **Misconduct** (ascending) — fewer red cards first, then fewer yellow cards.
-4. **Capped goals against** (ascending) — fewer non-forfeit capped GA is better.
-5. **Capped goal differential** (descending) — **nullified** if any forfeit exists in scope.
+4. **Capped goals against** (ascending) — fewer non-forfeit GA (per-game cap of **5**) is better.
+5. **Capped goal differential** (descending) — `sum(min(GF, 3) − min(GA, 5))` over non-forfeit
+   games; **nullified** if any forfeit exists in scope.
 6. **KFTM override** (descending) — manual `TiebreakerOverride` records with
    `Scope = PoolPlayStandings`. Within a still-tied group, a team’s KFTM score is the count of
    override wins against other teams in that same group. PSO-scoped overrides are ignored.
