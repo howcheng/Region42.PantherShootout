@@ -44,12 +44,12 @@ public class PoolPlayStandingDto
 	public int GoalDifferential { get; set; }
 
 	/// <summary>
-	/// Tiebreaker-only goals against: per-game GA capped at 3, excluding forfeited games.
+	/// Tiebreaker-only goals against: per-game GA capped at 5, excluding forfeited games.
 	/// </summary>
 	public int CappedGoalsAgainst { get; set; }
 
 	/// <summary>
-	/// Tiebreaker-only goal differential: per-game GF and GA each capped at 3, excluding forfeits.
+	/// Tiebreaker-only goal differential: per-game GF capped at 3 minus GA capped at 5, excluding forfeits.
 	/// </summary>
 	public int CappedGoalDifferential { get; set; }
 

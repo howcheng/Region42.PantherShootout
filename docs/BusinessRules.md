@@ -176,11 +176,15 @@ the following tiebreakers are evaluated **in this exact order** until the tie is
    for what KFTM is; this is a live procedure result entered manually by tournament staff, used
    only when teams are still tied after all 5 formula-based tiebreakers above.
 
-Note: for the goals-against and goal-differential tiebreakers specifically, each game's
-goals-for and goals-against are individually capped at 3 (i.e., a 7-0 win only contributes 3
-goals toward these specific tiebreaker totals, same 3-goal cap as used for game points above)
-before being summed. This is a **separate, more tightly capped** calculation from the plain `GA`
-standings column, which reflects true, uncapped goals allowed. **Both the capped
+Note: the goals-against and goal-differential tiebreakers use per-game caps that differ from
+each other (and from the plain `GA`/`GD` standings columns):
+- **Goals against (TB)**: each game's goals conceded are capped at **5** before summing
+  (a 7–0 loss contributes 5 toward tiebreaker GA).
+- **Goal differential (TB)**: each game's goals scored are capped at **3**, then that total
+  minus the capped goals-against total above (i.e. `sum(min(GF, 3)) − sum(min(GA, 5))` over
+  non-forfeit games). A 7–0 win contributes `3 − 0 = +3` toward tiebreaker GD for the winner
+  and `0 − 5 = −5` for the loser.
+These are **separate** from the uncapped standings `GA`/`GD` columns. **Both the capped
 tiebreaker-only GA/GD totals and the uncapped standings `GA`/`GD` columns need to exist** as
 distinct values in the new app.
 

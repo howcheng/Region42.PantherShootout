@@ -16,7 +16,8 @@ namespace Region42.PantherShootout.Application.Services;
 /// <item>−1 per yellow card, −2 per red card</item>
 /// <item>−1 for host AYSO Region 42 volunteer requirement deduction (applied immediately per team)</item>
 /// <item>Tiebreakers: 2-way H2H → Wins (nullified if any forfeit in scope) → RC then YC →
-/// non-forfeit capped GA → non-forfeit capped GD (nullified if any forfeit in scope) → KFTM</item>
+/// non-forfeit GA (capped at 5/game) → non-forfeit GD (GF capped at 3/game less capped GA;
+/// nullified if any forfeit in scope) → KFTM</item>
 /// </list>
 /// </summary>
 public static class PoolPlayStandingsCalculator
@@ -25,6 +26,8 @@ public static class PoolPlayStandingsCalculator
 	public const int DrawPoints = 3;
 	public const int LossPoints = 0;
 	public const int MaxGoalBonusPerGame = 3;
+	public const int MaxGoalsAgainstPerGameForTiebreaker = 5;
+	public const int MaxGoalsForPerGameForTiebreaker = 3;
 	public const int ShutoutBonusPoints = 1;
 	public const int ForfeitWinPoints = 7;
 	public const int RedCardDeduction = 2;
@@ -363,8 +366,8 @@ public static class PoolPlayStandingsCalculator
 					dto.Points += ShutoutBonusPoints;
 				}
 
-				var cappedFor = Math.Min(goalsFor, MaxGoalBonusPerGame);
-				var cappedAgainst = Math.Min(goalsAgainst, MaxGoalBonusPerGame);
+				var cappedFor = Math.Min(goalsFor, MaxGoalsForPerGameForTiebreaker);
+				var cappedAgainst = Math.Min(goalsAgainst, MaxGoalsAgainstPerGameForTiebreaker);
 				dto.CappedGoalsAgainst += cappedAgainst;
 				dto.CappedGoalDifferential += cappedFor - cappedAgainst;
 			}
